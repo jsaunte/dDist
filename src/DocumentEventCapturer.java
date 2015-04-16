@@ -57,6 +57,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		/* Queue a copy of the event and then modify the textarea */
 		try {
 			outputStream.writeObject(new TextInsertEvent(offset, str));
+			outputStream.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

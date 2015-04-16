@@ -91,9 +91,7 @@ public class DistributedTextEditor extends JFrame {
 				"Try to type and delete stuff in the top area.\n" + 
 				"Then figure out how it works.\n", 0);
 
-		er = new EventReplayer(dec, area2);
-		ert = new Thread(er);
-		ert.start();
+		
 	}
 
 	private KeyListener k1 = new KeyAdapter() {
@@ -122,9 +120,12 @@ public class DistributedTextEditor extends JFrame {
 							if (client != null) {
 								System.out.println("Connection from: " + client);
 								try {
-									inputStream = new ObjectInputStream(client.getInputStream());
 									outputStream = new ObjectOutputStream(client.getOutputStream());
+									inputStream = new ObjectInputStream(client.getInputStream());									
 									dec = new DocumentEventCapturer(inputStream, outputStream);
+									er = new EventReplayer(dec, area2); // TODO:
+									ert = new Thread(er);
+									ert.start();
 								} catch (IOException e) {
 									e.printStackTrace();
 								}
@@ -197,9 +198,12 @@ public class DistributedTextEditor extends JFrame {
 			setTitle("Connecting to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 			try {
 				Socket clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
-				inputStream = new ObjectInputStream(clientSocket.getInputStream());
 				outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+				inputStream = new ObjectInputStream(clientSocket.getInputStream());				
 				dec = new DocumentEventCapturer(inputStream, outputStream);
+				er = new EventReplayer(dec, area2); // TODO:
+				ert = new Thread(er);
+				ert.start();
 			} catch (NumberFormatException | IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
