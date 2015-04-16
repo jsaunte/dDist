@@ -29,8 +29,10 @@ public class DistributedTextEditor extends JFrame {
 	private String currentFile = "Untitled";
 	private boolean changed = false;
 	private boolean connected = false;
-	private DocumentEventCapturer dec = new DocumentEventCapturer();
+	private DocumentEventCapturer dec;
 	private ServerSocket serverSocket;
+	private ObjectInputStream inputStream;
+	private ObjectOutputStream outputStream;
 
 	public DistributedTextEditor() {
 		area1.setFont(new Font("Monospaced",Font.PLAIN,12));
@@ -119,6 +121,13 @@ public class DistributedTextEditor extends JFrame {
 							Socket client = waitForConnectionFromClient();
 							if (client != null) {
 								System.out.println("Connection from: " + client);
+								try {
+									inputStream = new ObjectInputStream(client.getInputStream());
+									outputStream = new ObjectOutputStream(client.getOutputStream());
+									dec = new DocumentEventCapturer(inputStream, outputStream);
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							} else {
 								break;
 							}
@@ -187,7 +196,10 @@ public class DistributedTextEditor extends JFrame {
 			area1.setText("");
 			setTitle("Connecting to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 			try {
-				Socket client = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
+				Socket clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
+				inputStream = new ObjectInputStream(clientSocket.getInputStream());
+				outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+				dec = new DocumentEventCapturer(inputStream, outputStream);
 			} catch (NumberFormatException | IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();

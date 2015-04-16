@@ -1,4 +1,6 @@
+import java.io.*;
 import java.util.concurrent.LinkedBlockingQueue;
+
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
@@ -25,6 +27,14 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 *    we want, as we then don't need to keep asking until there are new elements.
 	 */
 	protected LinkedBlockingQueue<MyTextEvent> eventHistory = new LinkedBlockingQueue<MyTextEvent>();
+	private ObjectInputStream inputStream;
+	private ObjectOutputStream outputStream;
+	
+	public DocumentEventCapturer(ObjectInputStream inputStream, ObjectOutputStream outputStream) {
+		this.inputStream = inputStream;
+		this.outputStream = outputStream;
+		
+	}
 
 	/**	
 	 * If the queue is empty, then the call will block until an element arrives.
@@ -33,7 +43,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @return Head of the recorded event queue. 
 	 */
 	MyTextEvent take() throws InterruptedException {
-		return eventHistory.take();
+		try {
+			MyTextEvent event = (MyTextEvent) inputStream.readObject();
+			return event;
+		} catch (ClassNotFoundException | IOException e) {}
+		return null;
 	}
 
 	public void insertString(FilterBypass fb, int offset,
@@ -41,14 +55,22 @@ public class DocumentEventCapturer extends DocumentFilter {
 					throws BadLocationException {
 		
 		/* Queue a copy of the event and then modify the textarea */
-		eventHistory.add(new TextInsertEvent(offset, str));		
+		try {
+			outputStream.writeObject(new TextInsertEvent(offset, str));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		super.insertString(fb, offset, str, a);
 	}	
 
 	public void remove(FilterBypass fb, int offset, int length) 					
 			throws BadLocationException {
 		/* Queue a copy of the event and then modify the textarea */
-		eventHistory.add(new TextRemoveEvent(offset, length));		
+		try {
+			outputStream.writeObject(new TextRemoveEvent(offset, length));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		super.remove(fb, offset, length);
 	}
 
@@ -59,9 +81,17 @@ public class DocumentEventCapturer extends DocumentFilter {
 
 		/* Queue a copy of the event and then modify the text */
 		if (length > 0) {
-			eventHistory.add(new TextRemoveEvent(offset, length));		
+			try {
+				outputStream.writeObject(new TextRemoveEvent(offset, length));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}	
 		}		
-		eventHistory.add(new TextInsertEvent(offset, str));				
+		try {
+			outputStream.writeObject(new TextInsertEvent(offset, str));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}			
 		super.replace(fb, offset, length, str, a);
 	}    
 }
