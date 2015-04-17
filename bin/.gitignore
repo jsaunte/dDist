@@ -16,3 +16,5 @@
 /Server/
 /TextInsertEvent.class
 /TextRemoveEvent.class
+/QueueRMI.class
+/QueueRMIImpl.class

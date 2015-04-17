@@ -11,6 +11,8 @@ import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.event.*;
 
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.util.concurrent.*;
 
 public class DistributedTextEditor extends JFrame {
@@ -90,8 +92,8 @@ public class DistributedTextEditor extends JFrame {
 		area1.insert("Example of how to capture stuff from the event queue and replay it in another buffer.\n" +
 				"Try to type and delete stuff in the top area.\n" + 
 				"Then figure out how it works.\n", 0);
-
 		
+				
 	}
 
 	private KeyListener k1 = new KeyAdapter() {
@@ -120,9 +122,9 @@ public class DistributedTextEditor extends JFrame {
 							if (client != null) {
 								System.out.println("Connection from: " + client);
 								try {
-									outputStream = new ObjectOutputStream(client.getOutputStream());
-									inputStream = new ObjectInputStream(client.getInputStream());									
-									dec = new DocumentEventCapturer(inputStream, outputStream);
+									QueueRMI queue = new QueueRMIImpl();
+									Naming.rebind("//" + local.getHostAddress() + ":" + portNumber.getText() + "/dDistHjort", queue);
+									dec = new DocumentEventCapturer(queue);
 									er = new EventReplayer(dec, area2); // TODO:
 									ert = new Thread(er);
 									ert.start();
@@ -197,14 +199,13 @@ public class DistributedTextEditor extends JFrame {
 			area1.setText("");
 			setTitle("Connecting to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 			try {
-				Socket clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
-				outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-				inputStream = new ObjectInputStream(clientSocket.getInputStream());				
-				dec = new DocumentEventCapturer(inputStream, outputStream);
+//				Socket clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
+				QueueRMI queue = (QueueRMI) Naming.lookup("//" + ipaddress.getText() + ":" + portNumber.getText() + "/dDistHjort");
+				dec = new DocumentEventCapturer(queue);
 				er = new EventReplayer(dec, area2); // TODO:
 				ert = new Thread(er);
 				ert.start();
-			} catch (NumberFormatException | IOException e1) {
+			} catch (NumberFormatException | IOException | NotBoundException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
