@@ -1,5 +1,8 @@
 package Chord;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -71,13 +74,33 @@ public class ChordNameServiceImpl extends Thread implements ChordNameService  {
 		return pre; // You might want to modify this.
 	}
 
-	public InetSocketAddress lookup(int key) {
+	public InetSocketAddress lookup(int key) throws IOException {
 		/*
 		 * The below works fine for singleton groups, but you might
 		 * want to connect to the rest of the group to lookup the
 		 * responsible if the group is larger.
 		 */
-		return myName; 
+		
+		if(keyOfName(pre) == myKey) {
+			return myName;
+		}
+		
+		if (Helper.between(key, keyOfName(pre), myKey)) {
+			return myName;
+		}
+		System.out.println("Lookup kaldt");
+		return contactSuccessor("lookup," + key);
+	}
+	
+	public InetSocketAddress contactSuccessor(String m) throws IOException {
+		Socket successor = new Socket(InetAddress.getLocalHost(), suc.getPort());
+		BufferedReader reader = new BufferedReader(new InputStreamReader(successor.getInputStream()));
+		String answer = reader.readLine();
+		String[] answers = answer.split(",");
+		InetSocketAddress res = new InetSocketAddress(answers[0], Integer.parseInt(answers[1]));
+		reader.close();
+		successor.close();
+		return res;
 	}
 	
 	/**
@@ -98,9 +121,7 @@ public class ChordNameServiceImpl extends Thread implements ChordNameService  {
 
 	public void run() {
 		System.out.println("My name is " + myName + " and my key is " + myKey);
-		Socket preSocket = null;
-		Socket sucSocket = null;
-		active = true;
+		
 		/*
 		 * If joining we should now enter the existing group and
 		 * should at some point register this peer on its port if not
@@ -110,24 +131,90 @@ public class ChordNameServiceImpl extends Thread implements ChordNameService  {
 		 * should return so that the threat running it might
 		 * terminate.
 		 */
-		while (active) {
-			
-		}
+		suc = myName;
+		pre = myName;
 		
+		try {
+			if(joining) {
+				Socket knownPeer = new Socket(connectedAt.getHostName(), connectedAt.getPort());
+				PrintWriter toKnownPeer = new PrintWriter(knownPeer.getOutputStream(),true);
+				toKnownPeer.println("lookup," + myKey);
+				BufferedReader fromPeers = new BufferedReader(new InputStreamReader(knownPeer.getInputStream()));
+				String answer = fromPeers.readLine();
+				String[] parameters = answer.split(",");
+				suc = new InetSocketAddress(parameters[0], Integer.parseInt(parameters[1]) );
+				toKnownPeer.close();
+				knownPeer.close();
+				fromPeers.close();
+				
+				
+
+				Socket sucSocket = new Socket(InetAddress.getLocalHost(), suc.getPort());
+				PrintWriter toSuc = new PrintWriter(sucSocket.getOutputStream(),true);
+				toSuc.println("getPre");
+				BufferedReader fromSuc = new BufferedReader(new InputStreamReader(sucSocket.getInputStream()));
+				String preString = fromSuc.readLine();
+				String[] preStrings = preString.split(",");
+				pre = new InetSocketAddress(preStrings[0], Integer.parseInt(preStrings[1]));
+				
+				toSuc.println("changePre," + myName.getHostName() + "," + myName.getPort());
+				toSuc.close();
+				fromSuc.close();
+				sucSocket.close();
+				
+				Socket preSocket = new Socket(InetAddress.getLocalHost(), pre.getPort());
+				PrintWriter toPre = new PrintWriter(preSocket.getOutputStream(),true);
+				toPre.println("changeSuc," + myName.getHostName() + "," + myName.getPort());
+				preSocket.close();
+				toPre.close();				
+				
+				joining = false;
+			}
+			active = true;
+			ServerSocket mySocket = new ServerSocket(port);
+			while(active) {
+				Socket client = waitForConnection(mySocket);
+				if (client != null) {
+					BufferedReader fromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
+					String msg = fromClient.readLine();
+					String[] parameters = msg.split(",");
+					PrintWriter toClient = new PrintWriter(client.getOutputStream(),true);
+					if (parameters[0].equals("lookup")) {
+						InetSocketAddress clientSuccessor = lookup(Integer.parseInt(parameters[1]));
+						toClient.println(clientSuccessor.getAddress() + "," + clientSuccessor.getPort());
+					} else if (parameters[0].equals("getPre")) {
+						toClient.println(pre.getAddress() + "," + pre.getPort());
+					} else if (parameters[0].equals("changePre")) {
+						pre = new InetSocketAddress(parameters[1], Integer.parseInt(parameters[2]));
+					} else if (parameters[0].equals("changeSuc")) {
+						suc = new InetSocketAddress(parameters[1], Integer.parseInt(parameters[2]));
+					}					
+				}
+				client.close();
+				client = null;
+			}
+			
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		ChordNameService peer1 = new ChordNameServiceImpl();
 		ChordNameService peer2 = new ChordNameServiceImpl();
 		ChordNameService peer3 = new ChordNameServiceImpl();
 
-		peer1.createGroup(40001);
-		peer2.joinGroup(peer1.getChordName(),40002);
-		peer3.joinGroup(peer2.getChordName(),40003);
+		peer1.createGroup(40501);
+		peer2.joinGroup(peer1.getChordName(),40502);
+		Thread.sleep(4000);
+		peer3.joinGroup(peer2.getChordName(),40503);
 
-		peer1.leaveGroup();
-		peer3.leaveGroup();
-		peer2.leaveGroup();
+//		peer1.leaveGroup();
+//		peer3.leaveGroup();
+//		peer2.leaveGroup();
 	}
 
 }

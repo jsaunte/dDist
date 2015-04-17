@@ -1,4 +1,5 @@
 package Chord;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 
 /**
@@ -79,8 +80,9 @@ public interface ChordNameService extends Runnable {
 	 * network.
 	 *
 	 * @param key The key for which we seek the responsible peer. Must be non-negative.
+	 * @throws IOException 
 	 */
-	public InetSocketAddress lookup(int key);
+	public InetSocketAddress lookup(int key) throws IOException;
     
  	/**
  	 * Starts the thread which manages this peers participation in
