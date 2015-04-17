@@ -1,4 +1,5 @@
 import java.io.*;
+import java.rmi.RemoteException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.swing.text.AttributeSet;
@@ -37,8 +38,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * If the thread gets interrupted while waiting, we throw InterruptedException.
 	 * 
 	 * @return Head of the recorded event queue. 
+	 * @throws RemoteException 
 	 */
-	MyTextEvent take() throws InterruptedException {
+	MyTextEvent take() throws InterruptedException, RemoteException {
 		return eventHistory.getQueue().take();
 	}
 
@@ -47,14 +49,24 @@ public class DocumentEventCapturer extends DocumentFilter {
 					throws BadLocationException {
 		
 		/* Queue a copy of the event and then modify the textarea */
-		eventHistory.getQueue().add(new TextInsertEvent(offset, str));
+		try {
+			eventHistory.getQueue().add(new TextInsertEvent(offset, str));
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		super.insertString(fb, offset, str, a);
 	}	
 
 	public void remove(FilterBypass fb, int offset, int length) 					
 			throws BadLocationException {
 		/* Queue a copy of the event and then modify the textarea */
-		eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
+		try {
+			eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		super.remove(fb, offset, length);
 	}
 
@@ -65,9 +77,19 @@ public class DocumentEventCapturer extends DocumentFilter {
 
 		/* Queue a copy of the event and then modify the text */
 		if (length > 0) {
-			eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
+			try {
+				eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}		
-		eventHistory.getQueue().add(new TextInsertEvent(offset, str));
+		try {
+			eventHistory.getQueue().add(new TextInsertEvent(offset, str));
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		super.replace(fb, offset, length, str, a);
 	}    
 }

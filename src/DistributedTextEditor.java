@@ -116,11 +116,11 @@ public class DistributedTextEditor extends JFrame {
 				setTitle("I'm listening on: " + local.getHostAddress() + ":" + portNumber.getText());
 				Runnable server = new Runnable() {
 					public void run() {
-						registerOnPort();
+//						registerOnPort();
 						while(true) {
-							Socket client = waitForConnectionFromClient();
-							if (client != null) {
-								System.out.println("Connection from: " + client);
+//							Socket client = waitForConnectionFromClient();
+//							if (client != null) {
+//								System.out.println("Connection from: " + client);
 								try {
 									QueueRMI queue = new QueueRMIImpl();
 									Naming.rebind("//" + local.getHostAddress() + ":" + portNumber.getText() + "/dDistHjort", queue);
@@ -131,9 +131,9 @@ public class DistributedTextEditor extends JFrame {
 								} catch (IOException e) {
 									e.printStackTrace();
 								}
-							} else {
-								break;
-							}
+//							} else {
+//								break;
+//							}
 						}
 					}
 				};
@@ -160,22 +160,22 @@ public class DistributedTextEditor extends JFrame {
 			serverSocket = new ServerSocket(Integer.parseInt(portNumber.getText()));
 		} catch (IOException e) {
 			serverSocket = null;
-			System.err.println("Cannot open server socket on port number" + portNumber);
+			System.err.println("Cannot open server socket on port number" + portNumber.getText());
 			System.err.println(e);
 			System.exit(-1);			
 		}
 	}
 	
-	public void deregisterOnPort() {
-		if (serverSocket != null) {
-			try {
-				serverSocket.close();
-				serverSocket = null;
-			} catch (IOException e) {
-				System.err.println(e);
-			}
-		}
-	}
+//	public void deregisterOnPort() {
+//		if (serverSocket != null) {
+//			try {
+//				serverSocket.close();
+//				serverSocket = null;
+//			} catch (IOException e) {
+//				System.err.println(e);
+//			}
+//		}
+//	}
 	
 	/**
 	 *
@@ -183,15 +183,15 @@ public class DistributedTextEditor extends JFrame {
 	 * next one in line in case a client is already trying to connect. Returns the
 	 * socket of the connection, null if there were any failures.
 	 */
-	private Socket waitForConnectionFromClient() {
-		Socket res = null;
-		try {
-			res = serverSocket.accept();
-		} catch (IOException e) {
-			// We return null on IOExceptions
-		}
-		return res;
-	}
+//	private Socket waitForConnectionFromClient() {
+//		Socket res = null;
+//		try {
+//			res = serverSocket.accept();
+//		} catch (IOException e) {
+//			// We return null on IOExceptions
+//		}
+//		return res;
+//	}
 
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {

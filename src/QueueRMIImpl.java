@@ -13,7 +13,7 @@ public class QueueRMIImpl extends UnicastRemoteObject implements QueueRMI {
 	}
 
 	@Override
-	public LinkedBlockingQueue<MyTextEvent> getQueue() {
+	public LinkedBlockingQueue<MyTextEvent> getQueue() throws RemoteException {
 		return queue;
 	}
 
