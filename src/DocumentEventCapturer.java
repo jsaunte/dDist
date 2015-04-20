@@ -1,4 +1,5 @@
 import java.io.*;
+import java.net.Socket;
 import java.rmi.RemoteException;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -27,12 +28,53 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 *    empty, then take() will wait until new elements arrive, which is what
 	 *    we want, as we then don't need to keep asking until there are new elements.
 	 */
-	protected QueueRMI eventHistory;
+	protected LinkedBlockingQueue<MyTextEvent> eventHistory = new LinkedBlockingQueue<MyTextEvent>();
+	private ObjectOutputStream oout;
+	private Thread queueThread;
+	private final DistributedTextEditor editor;
 	
-	public DocumentEventCapturer(QueueRMI queue) {
-		eventHistory = queue;
+	public DocumentEventCapturer(Socket client, DistributedTextEditor e) throws IOException {
+		oout = new ObjectOutputStream(client.getOutputStream());
+		this.editor = e;
+		final ObjectInputStream ois = new ObjectInputStream(client.getInputStream());
+		Runnable streamToQueue = new Runnable() {
+			@Override
+			public void run() {
+				try {
+					MyTextEvent event;
+					while((event =  (MyTextEvent) ois.readObject()) != null) {
+						eventHistory.add(event);
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					if(!editor.getTitle().equals("Disconnected")) {
+						editor.disconnect();
+						editor.setTitle("Connection lost");
+					}
+				}
+				if(!editor.getActive()) {
+					editor.disconnect();
+					editor.setTitle("Disconnected");
+				} else {
+					editor.setTitleToListen();
+				}
+				editor.setDocumentFilter(null);
+				editor.resetArea2();
+			}
+			
+		};
+		queueThread = new Thread(streamToQueue);
+		queueThread.start();
 	}
-
+	
+	public void stopStreamToQueue() {
+		try {
+			oout.writeObject(null);
+		} catch (IOException e) {
+			editor.disconnect();
+			editor.setTitle("Connection lost");
+		}
+	}
+	
 	/**	
 	 * If the queue is empty, then the call will block until an element arrives.
 	 * If the thread gets interrupted while waiting, we throw InterruptedException.
@@ -41,20 +83,20 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @throws RemoteException 
 	 */
 	MyTextEvent take() throws InterruptedException, RemoteException {
-		return eventHistory.getQueue().take();
+		return eventHistory.take();
 	}
 
 	public void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a)
 					throws BadLocationException {
 		
-		/* Queue a copy of the event and then modify the textarea */
+		/* Queue ra copy of the event and then modify the textarea */
 		try {
-			eventHistory.getQueue().add(new TextInsertEvent(offset, str));
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			oout.writeObject(new TextInsertEvent(offset, str));
+		} catch (IOException e) {
+			editor.disconnect();
+			editor.setTitle("Connection lost");
+		}		
 		super.insertString(fb, offset, str, a);
 	}	
 
@@ -62,11 +104,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 			throws BadLocationException {
 		/* Queue a copy of the event and then modify the textarea */
 		try {
-			eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			oout.writeObject(new TextRemoveEvent(offset, length));
+		} catch (IOException e) {
+			editor.disconnect();
+			editor.setTitle("Connection lost");
+		}		
 		super.remove(fb, offset, length);
 	}
 
@@ -76,20 +118,15 @@ public class DocumentEventCapturer extends DocumentFilter {
 					throws BadLocationException {
 
 		/* Queue a copy of the event and then modify the text */
-		if (length > 0) {
-			try {
-				eventHistory.getQueue().add(new TextRemoveEvent(offset, length));
-			} catch (RemoteException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}		
 		try {
-			eventHistory.getQueue().add(new TextInsertEvent(offset, str));
-		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if (length > 0) {
+				oout.writeObject(new TextRemoveEvent(offset, length));
+			}		
+			oout.writeObject(new TextInsertEvent(offset, str));
+		} catch (IOException e) {
+			editor.disconnect();
+			editor.setTitle("Connection lost");
 		}
 		super.replace(fb, offset, length, str, a);
-	}    
+	} 
 }

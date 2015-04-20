@@ -11,12 +11,11 @@ import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.event.*;
 
-import java.rmi.Naming;
-import java.rmi.NotBoundException;
-import java.util.concurrent.*;
 
 public class DistributedTextEditor extends JFrame {
 
+	private static DistributedTextEditor editor;
+	
 	private JTextArea area1 = new JTextArea(20,120);
 	private JTextArea area2 = new JTextArea(20,120);     
 	private JTextField ipaddress = new JTextField("IP address here");     
@@ -31,10 +30,10 @@ public class DistributedTextEditor extends JFrame {
 	private String currentFile = "Untitled";
 	private boolean changed = false;
 	private boolean connected = false;
+	private boolean active = false;
 	private DocumentEventCapturer dec;
 	private ServerSocket serverSocket;
-	private ObjectInputStream inputStream;
-	private ObjectOutputStream outputStream;
+	private Socket clientSocket;
 
 	public DistributedTextEditor() {
 		area1.setFont(new Font("Monospaced",Font.PLAIN,12));
@@ -83,6 +82,7 @@ public class DistributedTextEditor extends JFrame {
 
 		Save.setEnabled(false);
 		SaveAs.setEnabled(false);
+		Disconnect.setEnabled(false);
 
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		pack();
@@ -93,7 +93,6 @@ public class DistributedTextEditor extends JFrame {
 				"Try to type and delete stuff in the top area.\n" + 
 				"Then figure out how it works.\n", 0);
 		
-				
 	}
 
 	private KeyListener k1 = new KeyAdapter() {
@@ -106,45 +105,44 @@ public class DistributedTextEditor extends JFrame {
 
 	Action Listen = new AbstractAction("Listen") {
 		public void actionPerformed(ActionEvent e) {
-			saveOld();
-			area1.setText("");
-			// TODO: Become a server listening for connections on some port.
-			
-			InetAddress local;
+			saveOld();		
+			final InetAddress local;
+			active = true;
 			try {
 				local = InetAddress.getLocalHost();
-				setTitle("I'm listening on: " + local.getHostAddress() + ":" + portNumber.getText());
 				Runnable server = new Runnable() {
 					public void run() {
-//						registerOnPort();
-						while(true) {
-//							Socket client = waitForConnectionFromClient();
-//							if (client != null) {
-//								System.out.println("Connection from: " + client);
+						registerOnPort();
+						editor.setTitleToListen();
+						while(active) {							
+							clientSocket = waitForConnectionFromClient();
+							area1.setText("");	
+							if (clientSocket != null) {
+								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
+								connected = true;
 								try {
-									QueueRMI queue = new QueueRMIImpl();
-									Naming.rebind("//" + local.getHostAddress() + ":" + portNumber.getText() + "/dDistHjort", queue);
-									dec = new DocumentEventCapturer(queue);
-									er = new EventReplayer(dec, area2); // TODO:
+									dec = new DocumentEventCapturer(clientSocket, editor);
+									((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
+									er = new EventReplayer(dec, area2); 
 									ert = new Thread(er);
 									ert.start();
 								} catch (IOException e) {
 									e.printStackTrace();
 								}
-//							} else {
-//								break;
-//							}
+							}
 						}
 					}
 				};
 				Thread serverThread = new Thread(server);
 				serverThread.start();
 			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-			
+
 			changed = false;
+			Disconnect.setEnabled(true);
+			Listen.setEnabled(false);
+			Connect.setEnabled(false);
 			Save.setEnabled(false);
 			SaveAs.setEnabled(false);
 		}
@@ -166,16 +164,16 @@ public class DistributedTextEditor extends JFrame {
 		}
 	}
 	
-//	public void deregisterOnPort() {
-//		if (serverSocket != null) {
-//			try {
-//				serverSocket.close();
-//				serverSocket = null;
-//			} catch (IOException e) {
-//				System.err.println(e);
-//			}
-//		}
-//	}
+	public void deregisterOnPort() {
+		if (serverSocket != null) {
+			try {
+				serverSocket.close();
+				serverSocket = null;
+			} catch (IOException e) {
+				System.err.println(e);
+			}
+		}
+	}
 	
 	/**
 	 *
@@ -183,45 +181,77 @@ public class DistributedTextEditor extends JFrame {
 	 * next one in line in case a client is already trying to connect. Returns the
 	 * socket of the connection, null if there were any failures.
 	 */
-//	private Socket waitForConnectionFromClient() {
-//		Socket res = null;
-//		try {
-//			res = serverSocket.accept();
-//		} catch (IOException e) {
-//			// We return null on IOExceptions
-//		}
-//		return res;
-//	}
+	private Socket waitForConnectionFromClient() {
+		Socket res = null;
+		try {
+			res = serverSocket.accept();	
+		} catch (IOException e) {
+			// We return null on IOExceptions
+		}
+		return res;
+	}
 
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();
 			area1.setText("");
-			setTitle("Connecting to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 			try {
-//				Socket clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
-				QueueRMI queue = (QueueRMI) Naming.lookup("//" + ipaddress.getText() + ":" + portNumber.getText() + "/dDistHjort");
-				dec = new DocumentEventCapturer(queue);
-				er = new EventReplayer(dec, area2); // TODO:
+				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
+				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
+				connected = true;
+				dec = new DocumentEventCapturer(clientSocket, editor);
+				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
+				er = new EventReplayer(dec, area2);
 				ert = new Thread(er);
 				ert.start();
-			} catch (NumberFormatException | IOException | NotBoundException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				changed = false;
+				Connect.setEnabled(false);
+				Disconnect.setEnabled(true);
+				Listen.setEnabled(false);
+				Save.setEnabled(false);
+				SaveAs.setEnabled(false);
+				
+			} catch (NumberFormatException | IOException e1) {
+				setTitle("Unable to connect");
 			}
-			changed = false;
-			Save.setEnabled(false);
-			SaveAs.setEnabled(false);
+			
 		}
 	};
 
 	Action Disconnect = new AbstractAction("Disconnect") {
-		public void actionPerformed(ActionEvent e) {	
-			setTitle("Disconnected");
-			// TODO
+		public void actionPerformed(ActionEvent e) {
+			disconnect();
 		}
 	};
 
+	public void disconnect() {
+		setTitle("Disconnected");
+		active = false;
+		try {
+			if(connected == true) {
+				ert.interrupt();
+				dec.stopStreamToQueue();
+				setDocumentFilter(null);
+				clientSocket.close();
+				resetArea2();
+				connected = false;
+			}				
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		deregisterOnPort();
+		Disconnect.setEnabled(false);
+		Connect.setEnabled(true);
+		Listen.setEnabled(true);
+		Save.setEnabled(true);
+		SaveAs.setEnabled(true);
+	
+	}
+	
+	public void setDocumentFilter(DocumentFilter filter) {
+		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
+	}
+	
 	Action Save = new AbstractAction("Save") {
 		public void actionPerformed(ActionEvent e) {
 			if(!currentFile.equals("Untitled"))
@@ -273,9 +303,28 @@ public class DistributedTextEditor extends JFrame {
 		catch(IOException e) {
 		}
 	}
+	
+	public void resetArea2() {
+		area2.setText("");
+	}
+	
+	public boolean getActive() {
+		return active;
+	}
+	
+	public void setTitleToListen() {
+		InetAddress local;
+		try {
+			local = InetAddress.getLocalHost();
+			setTitle("I'm listening on: " + local.getHostAddress() + ":" + portNumber.getText());
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+		
+	}
 
 	public static void main(String[] arg) {
-		new DistributedTextEditor();
+		editor = new DistributedTextEditor();
 	}        
 
 }
