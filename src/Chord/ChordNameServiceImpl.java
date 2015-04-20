@@ -88,7 +88,6 @@ public class ChordNameServiceImpl extends Thread implements ChordNameService  {
 		if (Helper.between(key, keyOfName(pre), myKey)) {
 			return myName;
 		}
-		System.out.println("Lookup kaldt");
 		return contactSuccessor("lookup," + key);
 	}
 	
@@ -209,7 +208,6 @@ public class ChordNameServiceImpl extends Thread implements ChordNameService  {
 
 		peer1.createGroup(40501);
 		peer2.joinGroup(peer1.getChordName(),40502);
-		Thread.sleep(4000);
 		peer3.joinGroup(peer2.getChordName(),40503);
 
 //		peer1.leaveGroup();
