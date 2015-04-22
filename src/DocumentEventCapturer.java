@@ -32,10 +32,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private ObjectOutputStream oout;
 	private Thread queueThread;
 	private final DistributedTextEditor editor;
-	
-	public DocumentEventCapturer(Socket client, DistributedTextEditor e) throws IOException {
-		oout = new ObjectOutputStream(client.getOutputStream());
+	private final Socket client;
+
+	public DocumentEventCapturer(Socket c, DistributedTextEditor e) throws IOException {
 		this.editor = e;
+		this.client = c;
+		oout = new ObjectOutputStream(client.getOutputStream());
 		final ObjectInputStream ois = new ObjectInputStream(client.getInputStream());
 		Runnable streamToQueue = new Runnable() {
 			@Override
@@ -45,36 +47,40 @@ public class DocumentEventCapturer extends DocumentFilter {
 					while((event =  (MyTextEvent) ois.readObject()) != null) {
 						eventHistory.add(event);
 					}
-				} catch (IOException | ClassNotFoundException e) {
-					if(!editor.getTitle().equals("Disconnected")) {
-						editor.disconnect();
-						editor.setTitle("Connection lost");
+					if(!client.isClosed()) {
+						oout.writeObject(null);
 					}
+					client.close();
+				} catch (IOException | ClassNotFoundException e) {
+					if(!editor.getActive()) {
+						editor.disconnect();
+					}
+					editor.setErrorMessage("Connection lost");
 				}
 				if(!editor.getActive()) {
 					editor.disconnect();
 					editor.setTitle("Disconnected");
 				} else {
 					editor.setTitleToListen();
+					editor.setDocumentFilter(null);
 				}
-				editor.setDocumentFilter(null);
-				editor.resetArea2();
 			}
-			
+
 		};
 		queueThread = new Thread(streamToQueue);
 		queueThread.start();
 	}
-	
+
 	public void stopStreamToQueue() {
 		try {
-			oout.writeObject(null);
+			if(!client.isClosed()) {
+				oout.writeObject(null);
+			}
 		} catch (IOException e) {
-			editor.disconnect();
-			editor.setTitle("Connection lost");
+			editor.setErrorMessage("Connection lost stop");
 		}
 	}
-	
+
 	/**	
 	 * If the queue is empty, then the call will block until an element arrives.
 	 * If the thread gets interrupted while waiting, we throw InterruptedException.
@@ -89,13 +95,13 @@ public class DocumentEventCapturer extends DocumentFilter {
 	public void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a)
 					throws BadLocationException {
-		
+
 		/* Queue ra copy of the event and then modify the textarea */
 		try {
 			oout.writeObject(new TextInsertEvent(offset, str));
 		} catch (IOException e) {
 			editor.disconnect();
-			editor.setTitle("Connection lost");
+			editor.setErrorMessage("Connection lost insert");
 		}		
 		super.insertString(fb, offset, str, a);
 	}	
@@ -107,7 +113,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 			oout.writeObject(new TextRemoveEvent(offset, length));
 		} catch (IOException e) {
 			editor.disconnect();
-			editor.setTitle("Connection lost");
+			editor.setErrorMessage("Connection lost remove");
 		}		
 		super.remove(fb, offset, length);
 	}
@@ -125,7 +131,8 @@ public class DocumentEventCapturer extends DocumentFilter {
 			oout.writeObject(new TextInsertEvent(offset, str));
 		} catch (IOException e) {
 			editor.disconnect();
-			editor.setTitle("Connection lost");
+			editor.setErrorMessage("Connection lost replace");
+
 		}
 		super.replace(fb, offset, length, str, a);
 	} 

@@ -15,7 +15,7 @@ import javax.swing.event.*;
 public class DistributedTextEditor extends JFrame {
 
 	private static DistributedTextEditor editor;
-	
+
 	private JTextArea area1 = new JTextArea(20,120);
 	private JTextArea area2 = new JTextArea(20,120);     
 	private JTextField ipaddress = new JTextField("IP address here");     
@@ -92,7 +92,7 @@ public class DistributedTextEditor extends JFrame {
 		area1.insert("Example of how to capture stuff from the event queue and replay it in another buffer.\n" +
 				"Try to type and delete stuff in the top area.\n" + 
 				"Then figure out how it works.\n", 0);
-		
+
 	}
 
 	private KeyListener k1 = new KeyAdapter() {
@@ -117,6 +117,7 @@ public class DistributedTextEditor extends JFrame {
 						while(active) {							
 							clientSocket = waitForConnectionFromClient();
 							area1.setText("");	
+							resetArea2();
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
@@ -147,7 +148,7 @@ public class DistributedTextEditor extends JFrame {
 			SaveAs.setEnabled(false);
 		}
 	};
-	
+
 	/**
 	 *
 	 * Will register this server on the port number portNumber. Will not start waiting
@@ -163,7 +164,7 @@ public class DistributedTextEditor extends JFrame {
 			System.exit(-1);			
 		}
 	}
-	
+
 	public void deregisterOnPort() {
 		if (serverSocket != null) {
 			try {
@@ -174,7 +175,7 @@ public class DistributedTextEditor extends JFrame {
 			}
 		}
 	}
-	
+
 	/**
 	 *
 	 * Waits for the next client to connect on port number portNumber or takes the 
@@ -195,6 +196,7 @@ public class DistributedTextEditor extends JFrame {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();
 			area1.setText("");
+			resetArea2();
 			try {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
@@ -210,11 +212,11 @@ public class DistributedTextEditor extends JFrame {
 				Listen.setEnabled(false);
 				Save.setEnabled(false);
 				SaveAs.setEnabled(false);
-				
+
 			} catch (NumberFormatException | IOException e1) {
 				setTitle("Unable to connect");
 			}
-			
+
 		}
 	};
 
@@ -227,31 +229,25 @@ public class DistributedTextEditor extends JFrame {
 	public void disconnect() {
 		setTitle("Disconnected");
 		active = false;
-		try {
-			if(connected == true) {
-				ert.interrupt();
-				dec.stopStreamToQueue();
-				setDocumentFilter(null);
-				clientSocket.close();
-				resetArea2();
-				connected = false;
-			}				
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		if(connected == true) {
+			ert.interrupt();
+			dec.stopStreamToQueue();
+			setDocumentFilter(null);
+			connected = false;
+		}				
 		deregisterOnPort();
 		Disconnect.setEnabled(false);
 		Connect.setEnabled(true);
 		Listen.setEnabled(true);
 		Save.setEnabled(true);
 		SaveAs.setEnabled(true);
-	
+
 	}
-	
+
 	public void setDocumentFilter(DocumentFilter filter) {
 		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
 	}
-	
+
 	Action Save = new AbstractAction("Save") {
 		public void actionPerformed(ActionEvent e) {
 			if(!currentFile.equals("Untitled"))
@@ -303,15 +299,15 @@ public class DistributedTextEditor extends JFrame {
 		catch(IOException e) {
 		}
 	}
-	
+
 	public void resetArea2() {
 		area2.setText("");
 	}
-	
+
 	public boolean getActive() {
 		return active;
 	}
-	
+
 	public void setTitleToListen() {
 		InetAddress local;
 		try {
@@ -320,7 +316,11 @@ public class DistributedTextEditor extends JFrame {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
-		
+
+	}
+
+	public void setErrorMessage(String s) {
+		area2.setText("Error: " + s);
 	}
 
 	public static void main(String[] arg) {

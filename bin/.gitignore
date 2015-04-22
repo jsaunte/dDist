@@ -8,14 +8,6 @@
 /DistributedTextEditor$6.class
 /DistributedTextEditor$7.class
 /DistributedTextEditor.class
-/DocumentEventCapturer.class
-/EventReplayer$1.class
-/EventReplayer$2.class
-/EventReplayer.class
-/MyTextEvent.class
-/Server/
-/TextInsertEvent.class
-/TextRemoveEvent.class
-/QueueRMI.class
-/QueueRMIImpl.class
 /DocumentEventCapturer$1.class
+/DocumentEventCapturer.class
+/EventReplayer$2.class
