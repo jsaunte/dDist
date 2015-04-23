@@ -103,6 +103,14 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 
+	
+	/*
+	 * This action is called when the Listen-button is fired. 
+	 * It creates a serversocket, and awaits a connection.
+	 * When the connection is made, the textfields are emptied, and the title is changed accordingly. 
+	 * An eventcapturer is created, and the eventreplayer is started with the given eventcapturer. 
+	 * The GUI-menu is updated appropriately.
+	 */
 	Action Listen = new AbstractAction("Listen") {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();		
@@ -116,7 +124,7 @@ public class DistributedTextEditor extends JFrame {
 						editor.setTitleToListen();
 						while(active) {							
 							clientSocket = waitForConnectionFromClient();
-							area1.setText("");	
+							area1.setText("");
 							resetArea2();
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
@@ -164,6 +172,10 @@ public class DistributedTextEditor extends JFrame {
 			System.exit(-1);			
 		}
 	}
+	
+	/**
+	 * Closes the serversocket
+	 */
 
 	public void deregisterOnPort() {
 		if (serverSocket != null) {
@@ -192,6 +204,12 @@ public class DistributedTextEditor extends JFrame {
 		return res;
 	}
 
+	/*
+	 * This action is called when the Connect-button is fired. 
+	 * It empties the textareas, and creates a ClientSocket, on the IP-adress and the Port-number taken from the textinput-areas.
+	 * An eventcapturer is created, and the eventreplayer is started with the given eventcapturer. 
+	 * The GUI-menu is updated appropriately.
+	 */
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();
@@ -220,12 +238,20 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 
+	/*
+	 * This action is called when the Disconnect-button is fired.
+	 */
 	Action Disconnect = new AbstractAction("Disconnect") {
 		public void actionPerformed(ActionEvent e) {
 			disconnect();
 		}
 	};
 
+	/* 
+	 * The disconnect method will stop the eventreplayer, and send null to the other peer, to stop their reading from the stream.
+	 * If a server calls disconnect, the serversocket will be closed.
+	 * The GUI-menu is updated appropriately.
+	 */
 	public void disconnect() {
 		setTitle("Disconnected");
 		active = false;

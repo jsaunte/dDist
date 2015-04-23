@@ -34,6 +34,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private final DistributedTextEditor editor;
 	private final Socket client;
 
+	/*
+	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
+	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
+	 * It calls on method on the editor to update it appropriately. 
+	 */
 	public DocumentEventCapturer(Socket c, DistributedTextEditor e) throws IOException {
 		this.editor = e;
 		this.client = c;
@@ -71,6 +76,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		queueThread.start();
 	}
 
+	/* 
+	 * Will send null to the other peer if the connection is not closed.
+	 */
 	public void stopStreamToQueue() {
 		try {
 			if(!client.isClosed()) {
@@ -100,8 +108,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 		try {
 			oout.writeObject(new TextInsertEvent(offset, str));
 		} catch (IOException e) {
-			editor.disconnect();
-			editor.setErrorMessage("Connection lost insert");
 		}		
 		super.insertString(fb, offset, str, a);
 	}	
@@ -112,8 +118,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 		try {
 			oout.writeObject(new TextRemoveEvent(offset, length));
 		} catch (IOException e) {
-			editor.disconnect();
-			editor.setErrorMessage("Connection lost remove");
 		}		
 		super.remove(fb, offset, length);
 	}
@@ -130,9 +134,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 			}		
 			oout.writeObject(new TextInsertEvent(offset, str));
 		} catch (IOException e) {
-			editor.disconnect();
-			editor.setErrorMessage("Connection lost replace");
-
 		}
 		super.replace(fb, offset, length, str, a);
 	} 
