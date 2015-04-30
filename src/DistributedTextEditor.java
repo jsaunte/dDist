@@ -129,15 +129,11 @@ public class DistributedTextEditor extends JFrame {
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
-								try {
-									dec = new DocumentEventCapturer(clientSocket, editor);
-									((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-									er = new EventReplayer(dec, area2); 
-									ert = new Thread(er);
-									ert.start();
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
+								dec = new DocumentEventCapturer();
+								((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
+								er = new EventReplayer(editor, dec, area2, clientSocket); 
+								ert = new Thread(er);
+								ert.start();
 							}
 						}
 					}
@@ -219,9 +215,9 @@ public class DistributedTextEditor extends JFrame {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
-				dec = new DocumentEventCapturer(clientSocket, editor);
+				dec = new DocumentEventCapturer();
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(dec, area2);
+				er = new EventReplayer(editor, dec, area2, clientSocket);
 				ert = new Thread(er);
 				ert.start();
 				changed = false;
@@ -256,8 +252,8 @@ public class DistributedTextEditor extends JFrame {
 		setTitle("Disconnected");
 		active = false;
 		if(connected == true) {
+			er.stopStreamToQueue();
 			ert.interrupt();
-			dec.stopStreamToQueue();
 			setDocumentFilter(null);
 			connected = false;
 		}				

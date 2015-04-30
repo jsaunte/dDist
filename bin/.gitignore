@@ -10,4 +10,13 @@
 /DistributedTextEditor.class
 /DocumentEventCapturer$1.class
 /DocumentEventCapturer.class
+/EventReplayer$1.class
 /EventReplayer$2.class
+/EventReplayer.class
+/MyTextEvent.class
+/Server/
+/TextInsertEvent.class
+/TextRemoveEvent.class
+/EventReplayer$3.class
+/EventReplayer$3$1.class
+/EventReplayer$3$2.class
