@@ -344,6 +344,14 @@ public class DistributedTextEditor extends JFrame {
 	public void setErrorMessage(String s) {
 		area2.setText("Error: " + s);
 	}
+	
+	public DocumentFilter getDocumentFilter() {
+		return dec;
+	}
+	
+	public JTextArea getTextArea() {
+		return area1;
+	}
 
 	public static void main(String[] arg) {
 		editor = new DistributedTextEditor();

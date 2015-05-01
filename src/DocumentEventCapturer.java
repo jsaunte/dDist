@@ -27,8 +27,8 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 *    empty, then take() will wait until new elements arrive, which is what
 	 *    we want, as we then don't need to keep asking until there are new elements.
 	 */
-	protected LinkedBlockingQueue<MyTextEvent> eventHistory = new LinkedBlockingQueue<MyTextEvent>();
-
+	//protected LinkedBlockingQueue<MyTextEvent> eventHistory = new LinkedBlockingQueue<MyTextEvent>();
+	protected LinkedBlockingQueue<TextEvent> eventHistory = new LinkedBlockingQueue<TextEvent>();
 	/**	
 	 * If the queue is empty, then the call will block until an element arrives.
 	 * If the thread gets interrupted while waiting, we throw InterruptedException.
@@ -36,7 +36,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @return Head of the recorded event queue. 
 	 * @throws RemoteException 
 	 */
-	MyTextEvent take() throws InterruptedException, RemoteException {
+//	MyTextEvent take() throws InterruptedException, RemoteException {
+//		return eventHistory.take();
+//	}
+	
+	TextEvent take() throws InterruptedException, RemoteException {
 		return eventHistory.take();
 	}
 

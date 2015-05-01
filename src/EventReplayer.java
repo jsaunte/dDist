@@ -48,36 +48,52 @@ public class EventReplayer implements Runnable {
 		boolean wasInterrupted = false;
 		while (!wasInterrupted) {
 			try {
-				MyTextEvent mte = dec.take();
-				if (mte instanceof TextInsertEvent) {
-					final TextInsertEvent tie = (TextInsertEvent)mte;
-					EventQueue.invokeLater(new Runnable() {
-						public void run() {
-							try {
-								output.writeObject(tie);			
-							} catch (Exception e) {
-								System.err.println(e);
-								/* We catch all axceptions, as an uncaught exception would make the 
-								 * EDT unwind, which is now healthy.
-								 */
-							}
+				final TextEvent event = dec.take();
+				
+				EventQueue.invokeLater(new Runnable() {
+
+					@Override
+					public void run() {
+						try {
+							output.writeObject(event);
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
-					});
-				} else if (mte instanceof TextRemoveEvent) {
-					final TextRemoveEvent tre = (TextRemoveEvent)mte;
-					EventQueue.invokeLater(new Runnable() {
-						public void run() {
-							try {
-								output.writeObject(tre);
-							} catch (Exception e) {
-								System.err.println(e);
-								/* We catch all axceptions, as an uncaught exception would make the 
-								 * EDT unwind, which is now healthy.
-								 */
-							}
-						}
-					});
-				} 
+					}
+					
+				});
+				
+//				MyTextEvent mte = dec.take();
+//				if (mte instanceof TextInsertEvent) {
+//					final TextInsertEvent tie = (TextInsertEvent)mte;
+//					EventQueue.invokeLater(new Runnable() {
+//						public void run() {
+//							try {
+//								output.writeObject(tie);			
+//							} catch (Exception e) {
+//								System.err.println(e);
+//								/* We catch all axceptions, as an uncaught exception would make the 
+//								 * EDT unwind, which is now healthy.
+//								 */
+//							}
+//						}
+//					});
+//				} else if (mte instanceof TextRemoveEvent) {
+//					final TextRemoveEvent tre = (TextRemoveEvent)mte;
+//					EventQueue.invokeLater(new Runnable() {
+//						public void run() {
+//							try {
+//								output.writeObject(tre);
+//							} catch (Exception e) {
+//								System.err.println(e);
+//								/* We catch all axceptions, as an uncaught exception would make the 
+//								 * EDT unwind, which is now healthy.
+//								 */
+//							}
+//						}
+//					});
+//				} 
 			} catch (Exception _) {
 				wasInterrupted = true;
 			}
@@ -90,37 +106,40 @@ public class EventReplayer implements Runnable {
 			@Override
 			public void run() {
 				try {
-					MyTextEvent event;
-					while((event =  (MyTextEvent) input.readObject()) != null) {
-						if (event instanceof TextInsertEvent) {
-							final TextInsertEvent tie = (TextInsertEvent)event;
-							EventQueue.invokeLater(new Runnable() {
-								public void run() {
-									try {
-										area.insert(tie.getText(), tie.getOffset());				
-									} catch (Exception e) {
-										System.err.println(e);
-										/* We catch all axceptions, as an uncaught exception would make the 
-										 * EDT unwind, which is now healthy.
-										 */
-									}
-								}
-							});
-						} else if (event instanceof TextRemoveEvent) {
-							final TextRemoveEvent tre = (TextRemoveEvent)event;
-							EventQueue.invokeLater(new Runnable() {
-								public void run() {
-									try {
-										area.replaceRange(null, tre.getOffset(), tre.getOffset()+tre.getLength());
-									} catch (Exception e) {
-										System.err.println(e);
-										/* We catch all axceptions, as an uncaught exception would make the 
-										 * EDT unwind, which is now healthy.
-										 */
-									}
-								}
-							});
-						}
+					TextEvent event;
+					while((event =  (TextEvent) input.readObject()) != null) {
+						
+						event.doEvent(editor);
+						
+//						if (event instanceof TextInsertEvent) {
+//							final TextInsertEvent tie = (TextInsertEvent)event;
+//							EventQueue.invokeLater(new Runnable() {
+//								public void run() {
+//									try {
+//										area.insert(tie.getText(), tie.getOffset());				
+//									} catch (Exception e) {
+//										System.err.println(e);
+//										/* We catch all axceptions, as an uncaught exception would make the 
+//										 * EDT unwind, which is now healthy.
+//										 */
+//									}
+//								}
+//							});
+//						} else if (event instanceof TextRemoveEvent) {
+//							final TextRemoveEvent tre = (TextRemoveEvent)event;
+//							EventQueue.invokeLater(new Runnable() {
+//								public void run() {
+//									try {
+//										area.replaceRange(null, tre.getOffset(), tre.getOffset()+tre.getLength());
+//									} catch (Exception e) {
+//										System.err.println(e);
+//										/* We catch all axceptions, as an uncaught exception would make the 
+//										 * EDT unwind, which is now healthy.
+//										 */
+//									}
+//								}
+//							});
+//						}
 					}
 					if(!client.isClosed()) {
 						output.writeObject(null);
