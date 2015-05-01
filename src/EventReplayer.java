@@ -24,7 +24,7 @@ public class EventReplayer implements Runnable {
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
-	protected LinkedBlockingQueue<MyTextEvent> localEventHistory = new LinkedBlockingQueue<MyTextEvent>();
+	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
 	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
@@ -57,7 +57,7 @@ public class EventReplayer implements Runnable {
 								output.writeObject(tie);			
 							} catch (Exception e) {
 								System.err.println(e);
-								/* We catch all exceptions, as an uncaught exception would make the 
+								/* We catch all axceptions, as an uncaught exception would make the 
 								 * EDT unwind, which is now healthy.
 								 */
 							}
@@ -71,7 +71,7 @@ public class EventReplayer implements Runnable {
 								output.writeObject(tre);
 							} catch (Exception e) {
 								System.err.println(e);
-								/* We catch all exceptions, as an uncaught exception would make the 
+								/* We catch all axceptions, as an uncaught exception would make the 
 								 * EDT unwind, which is now healthy.
 								 */
 							}
@@ -92,7 +92,35 @@ public class EventReplayer implements Runnable {
 				try {
 					MyTextEvent event;
 					while((event =  (MyTextEvent) input.readObject()) != null) {
-						localEventHistory.add(event);						
+						if (event instanceof TextInsertEvent) {
+							final TextInsertEvent tie = (TextInsertEvent)event;
+							EventQueue.invokeLater(new Runnable() {
+								public void run() {
+									try {
+										area.insert(tie.getText(), tie.getOffset());				
+									} catch (Exception e) {
+										System.err.println(e);
+										/* We catch all axceptions, as an uncaught exception would make the 
+										 * EDT unwind, which is now healthy.
+										 */
+									}
+								}
+							});
+						} else if (event instanceof TextRemoveEvent) {
+							final TextRemoveEvent tre = (TextRemoveEvent)event;
+							EventQueue.invokeLater(new Runnable() {
+								public void run() {
+									try {
+										area.replaceRange(null, tre.getOffset(), tre.getOffset()+tre.getLength());
+									} catch (Exception e) {
+										System.err.println(e);
+										/* We catch all axceptions, as an uncaught exception would make the 
+										 * EDT unwind, which is now healthy.
+										 */
+									}
+								}
+							});
+						}
 					}
 					if(!client.isClosed()) {
 						output.writeObject(null);
@@ -128,59 +156,5 @@ public class EventReplayer implements Runnable {
 		} catch (IOException e) {
 			editor.setErrorMessage("Connection lost stop");
 		}
-	}
-	
-	public void flushQueue() {
-//		editor.setDocumentFilter(null);
-		try {
-			while(!localEventHistory.isEmpty()) {
-				MyTextEvent event = localEventHistory.take();
-				if (event instanceof TextInsertEvent) {
-					final TextInsertEvent tie = (TextInsertEvent)event;
-					EventQueue.invokeLater(new Runnable() {
-						public void run() {
-							try {
-								area.insert(tie.getText(), tie.getOffset());				
-							} catch (Exception e) {
-								System.err.println(e);
-								/* We catch all exceptions, as an uncaught exception would make the 
-								 * EDT unwind, which is now healthy.
-								 */
-							}
-						}
-					});
-				} else if (event instanceof TextRemoveEvent) {
-					final TextRemoveEvent tre = (TextRemoveEvent)event;
-					EventQueue.invokeLater(new Runnable() {
-						public void run() {
-							try {
-								area.replaceRange(null, tre.getOffset(), tre.getOffset()+tre.getLength());
-							} catch (Exception e) {
-								System.err.println(e);
-								/* We catch all exceptions, as an uncaught exception would make the 
-								 * EDT unwind, which is now healthy.
-								 */
-							}
-						}
-					});
-				}
-			}
-		} catch (InterruptedException e) {
-			
-		}
-//		try {
-//			Thread.sleep(1500);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		if(!dec.eventHistory.isEmpty()) {
-			System.out.println("not local: " + dec.eventHistory.peek().toString());
-		}
-		if(!localEventHistory.isEmpty()) {
-			System.out.println("local: " + localEventHistory.peek().toString());
-		}
-
-//		editor.setDocumentFilter(dec);
 	}
 }

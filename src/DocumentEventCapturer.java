@@ -1,3 +1,4 @@
+import java.io.*;
 import java.rmi.RemoteException;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -35,14 +36,13 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @return Head of the recorded event queue. 
 	 * @throws RemoteException 
 	 */
-	MyTextEvent take() throws InterruptedException {
+	MyTextEvent take() throws InterruptedException, RemoteException {
 		return eventHistory.take();
 	}
 
 	public void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a)
 					throws BadLocationException {
-		System.out.println("insert printed: " + str);
 		eventHistory.add(new TextInsertEvent(offset, str));
 		super.insertString(fb, offset, str, a);
 	}	

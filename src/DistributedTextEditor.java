@@ -97,7 +97,6 @@ public class DistributedTextEditor extends JFrame {
 
 	private KeyListener k1 = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
-			er.flushQueue();
 			changed = true;
 			Save.setEnabled(true);
 			SaveAs.setEnabled(true);
@@ -132,7 +131,7 @@ public class DistributedTextEditor extends JFrame {
 								connected = true;
 								dec = new DocumentEventCapturer();
 								((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-								er = new EventReplayer(editor, dec, area1, clientSocket); 
+								er = new EventReplayer(editor, dec, area2, clientSocket); 
 								ert = new Thread(er);
 								ert.start();
 							}
@@ -218,7 +217,7 @@ public class DistributedTextEditor extends JFrame {
 				connected = true;
 				dec = new DocumentEventCapturer();
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(editor, dec, area1, clientSocket);
+				er = new EventReplayer(editor, dec, area2, clientSocket);
 				ert = new Thread(er);
 				ert.start();
 				changed = false;
