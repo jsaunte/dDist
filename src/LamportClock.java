@@ -10,6 +10,10 @@ public class LamportClock implements Comparable<LamportClock> {
 		return counter;
 	}
 	
+	public TimeStamp getTimeStamp() {
+		return new TimeStamp(counter, id);
+	}
+	
 	public void increment() {
 		counter++;
 	}

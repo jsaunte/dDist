@@ -8,16 +8,14 @@ import javax.swing.text.DocumentFilter;
  *
  */
 public class TextInsertEvent implements TextEvent  {
-
 	private String text;
 	private int offset;
-	private LamportClock lc;
+	private TimeStamp ts;
 	
-	public TextInsertEvent(int offset, String text, LamportClock lc) {
+	public TextInsertEvent(int offset, String text, TimeStamp ts) {
 		this.offset = offset;
 		this.text = text;
-		this.lc = lc;
-		lc.increment();
+		this.ts = ts;
 	}
 	public String getText() { return text; }
 	
@@ -35,9 +33,13 @@ public class TextInsertEvent implements TextEvent  {
 			
 		});
 	}
+	
 	@Override
-	public LamportClock getClock() {
-		return lc;
+	public TimeStamp getTimeStamp() {
+		return ts;
+	}
+	@Override
+	public int compareTo(TextEvent other) {
+		return ts.compareTo(other.getTimeStamp());
 	}
 }
-

@@ -41,9 +41,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @return Head of the recorded event queue. 
 	 * @throws RemoteException 
 	 */
-	
-	
-	
 	TextEvent take() throws InterruptedException, RemoteException {
 		return eventHistory.take();
 	}
@@ -51,13 +48,15 @@ public class DocumentEventCapturer extends DocumentFilter {
 	public void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a)
 					throws BadLocationException {
-		eventHistory.add(new TextInsertEvent(offset, str, lc));
+		lc.increment();
+		eventHistory.add(new TextInsertEvent(offset, str, lc.getTimeStamp()));
 		super.insertString(fb, offset, str, a);
 	}	
 
 	public void remove(FilterBypass fb, int offset, int length) 					
 			throws BadLocationException {
-		eventHistory.add(new TextRemoveEvent(offset, length, lc));
+		lc.increment();
+		eventHistory.add(new TextRemoveEvent(offset, length, lc.getTimeStamp()));
 		super.remove(fb, offset, length);
 	}
 
@@ -66,9 +65,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 			String str, AttributeSet a)
 					throws BadLocationException {
 		if (length > 0) {
-			eventHistory.add(new TextRemoveEvent(offset, length, lc));
+			lc.increment();
+			eventHistory.add(new TextRemoveEvent(offset, length, lc.getTimeStamp()));
 		}		
-		eventHistory.add(new TextInsertEvent(offset, str, lc));
+		lc.increment();
+		eventHistory.add(new TextInsertEvent(offset, str, lc.getTimeStamp()));
 		
 		super.replace(fb, offset, length, str, a);
 	} 

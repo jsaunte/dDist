@@ -2,18 +2,16 @@ import java.awt.EventQueue;
 
 import javax.swing.text.DocumentFilter;
 
-
-public class TextRemoveEvent implements TextEvent{
+public class TextRemoveEvent implements TextEvent {
 
 	private int length;
 	private int offset;
-	private LamportClock lc;
+	private TimeStamp ts;
 	
-	public TextRemoveEvent(int offset, int length, LamportClock lc) {
+	public TextRemoveEvent(int offset, int length, TimeStamp ts) {
 		this.offset = offset;
 		this.length = length;
-		this.lc = lc;
-		lc.increment();
+		this.ts = ts;
 	}
 	
 	public int getLength() { return length; }
@@ -32,8 +30,14 @@ public class TextRemoveEvent implements TextEvent{
 			
 		});
 	}
+
 	@Override
-	public LamportClock getClock() {
-		return lc;
+	public TimeStamp getTimeStamp() {
+		return ts;
+	}
+
+	@Override
+	public int compareTo(TextEvent other) {
+		return ts.compareTo(other.getTimeStamp());
 	}
 }

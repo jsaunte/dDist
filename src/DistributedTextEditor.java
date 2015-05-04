@@ -174,7 +174,6 @@ public class DistributedTextEditor extends JFrame {
 	/**
 	 * Closes the serversocket
 	 */
-
 	public void deregisterOnPort() {
 		if (serverSocket != null) {
 			try {
@@ -358,6 +357,5 @@ public class DistributedTextEditor extends JFrame {
 
 	public static void main(String[] arg) {
 		editor = new DistributedTextEditor();
-	}        
-
+	}
 }
