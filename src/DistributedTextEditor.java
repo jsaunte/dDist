@@ -34,6 +34,7 @@ public class DistributedTextEditor extends JFrame {
 	private DocumentEventCapturer dec;
 	private ServerSocket serverSocket;
 	private Socket clientSocket;
+	private LamportClock lc;
 
 	public DistributedTextEditor() {
 		area1.setFont(new Font("Monospaced",Font.PLAIN,12));
@@ -124,13 +125,14 @@ public class DistributedTextEditor extends JFrame {
 						editor.setTitleToListen();
 						while(active) {							
 							clientSocket = waitForConnectionFromClient();
+							lc = new LamportClock(1);
 							area1.setText("");
 							resetArea2();
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
-								dec = new DocumentEventCapturer();
-								((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
+								dec = new DocumentEventCapturer(lc);
+								setDocumentFilter(dec);
 								er = new EventReplayer(editor, dec, area2, clientSocket); 
 								ert = new Thread(er);
 								ert.start();
@@ -215,7 +217,8 @@ public class DistributedTextEditor extends JFrame {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
-				dec = new DocumentEventCapturer();
+				lc = new LamportClock(2);
+				dec = new DocumentEventCapturer(lc);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
 				er = new EventReplayer(editor, dec, area2, clientSocket);
 				ert = new Thread(er);

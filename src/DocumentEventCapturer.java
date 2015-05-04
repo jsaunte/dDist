@@ -27,8 +27,13 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 *    empty, then take() will wait until new elements arrive, which is what
 	 *    we want, as we then don't need to keep asking until there are new elements.
 	 */
-	//protected LinkedBlockingQueue<MyTextEvent> eventHistory = new LinkedBlockingQueue<MyTextEvent>();
 	protected LinkedBlockingQueue<TextEvent> eventHistory = new LinkedBlockingQueue<TextEvent>();
+	private LamportClock lc;
+	
+	public DocumentEventCapturer(LamportClock lc) {
+		this.lc = lc;
+	}
+
 	/**	
 	 * If the queue is empty, then the call will block until an element arrives.
 	 * If the thread gets interrupted while waiting, we throw InterruptedException.
@@ -36,9 +41,8 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * @return Head of the recorded event queue. 
 	 * @throws RemoteException 
 	 */
-//	MyTextEvent take() throws InterruptedException, RemoteException {
-//		return eventHistory.take();
-//	}
+	
+	
 	
 	TextEvent take() throws InterruptedException, RemoteException {
 		return eventHistory.take();
@@ -47,13 +51,13 @@ public class DocumentEventCapturer extends DocumentFilter {
 	public void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a)
 					throws BadLocationException {
-		eventHistory.add(new TextInsertEvent(offset, str));
+		eventHistory.add(new TextInsertEvent(offset, str, lc));
 		super.insertString(fb, offset, str, a);
 	}	
 
 	public void remove(FilterBypass fb, int offset, int length) 					
 			throws BadLocationException {
-		eventHistory.add(new TextRemoveEvent(offset, length));
+		eventHistory.add(new TextRemoveEvent(offset, length, lc));
 		super.remove(fb, offset, length);
 	}
 
@@ -62,9 +66,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 			String str, AttributeSet a)
 					throws BadLocationException {
 		if (length > 0) {
-			eventHistory.add(new TextRemoveEvent(offset, length));
+			eventHistory.add(new TextRemoveEvent(offset, length, lc));
 		}		
-		eventHistory.add(new TextInsertEvent(offset, str));
+		eventHistory.add(new TextInsertEvent(offset, str, lc));
 		
 		super.replace(fb, offset, length, str, a);
 	} 

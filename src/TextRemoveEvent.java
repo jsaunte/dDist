@@ -3,14 +3,17 @@ import java.awt.EventQueue;
 import javax.swing.text.DocumentFilter;
 
 
-public class TextRemoveEvent implements TextEvent /*extends MyTextEvent*/ {
+public class TextRemoveEvent implements TextEvent{
 
 	private int length;
 	private int offset;
+	private LamportClock lc;
 	
-	public TextRemoveEvent(int offset, int length) {
+	public TextRemoveEvent(int offset, int length, LamportClock lc) {
 		this.offset = offset;
 		this.length = length;
+		this.lc = lc;
+		lc.increment();
 	}
 	
 	public int getLength() { return length; }
@@ -28,5 +31,9 @@ public class TextRemoveEvent implements TextEvent /*extends MyTextEvent*/ {
 			}
 			
 		});
+	}
+	@Override
+	public LamportClock getClock() {
+		return lc;
 	}
 }

@@ -1,4 +1,5 @@
+/EventReplayer$2.class
 /TextEvent.class
 /TextInsertEvent$1.class
 /TextRemoveEvent$1.class
-/EventReplayer$2.class
+/LamportClock.class

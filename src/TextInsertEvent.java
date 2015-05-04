@@ -7,14 +7,17 @@ import javax.swing.text.DocumentFilter;
  * @author Jesper Buus Nielsen
  *
  */
-public class TextInsertEvent implements TextEvent /*extends MyTextEvent*/ {
+public class TextInsertEvent implements TextEvent  {
 
 	private String text;
 	private int offset;
+	private LamportClock lc;
 	
-	public TextInsertEvent(int offset, String text) {
+	public TextInsertEvent(int offset, String text, LamportClock lc) {
 		this.offset = offset;
 		this.text = text;
+		this.lc = lc;
+		lc.increment();
 	}
 	public String getText() { return text; }
 	
@@ -31,6 +34,10 @@ public class TextInsertEvent implements TextEvent /*extends MyTextEvent*/ {
 			}
 			
 		});
+	}
+	@Override
+	public LamportClock getClock() {
+		return lc;
 	}
 }
 
