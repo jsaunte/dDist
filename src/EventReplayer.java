@@ -82,7 +82,6 @@ public class EventReplayer implements Runnable {
 				try {
 					TextEvent event;
 					while((event =  (TextEvent) input.readObject()) != null) {
-						editor.getLamportClock().setMaxTime(event.getTimeStamp());
 						if(editor.getActive()) {
 							sequencingQueue.add(event);
 						} else {
