@@ -1,7 +1,6 @@
 import java.io.Serializable;
-import java.util.Comparator;
 
-public interface TextEvent extends Serializable, Comparator<TextEvent> {
+public interface TextEvent extends Serializable, Comparable<TextEvent> {
 	void doEvent(final DistributedTextEditor editor);
 	
 	TimeStamp getTimeStamp();

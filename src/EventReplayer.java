@@ -25,7 +25,7 @@ public class EventReplayer implements Runnable {
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
-	private PriorityBlockingQueue<TextEvent> sequencingQueue = new PriorityBlockingQueue<TextEvent>(11, new TextEventComparator());
+	private PriorityBlockingQueue<TextEvent> sequencingQueue = new PriorityBlockingQueue<TextEvent>();
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
