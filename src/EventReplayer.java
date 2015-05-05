@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * 
@@ -24,6 +25,7 @@ public class EventReplayer implements Runnable {
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
+	private PriorityBlockingQueue<TextEvent> sequencingQueue = new PriorityBlockingQueue<TextEvent>();
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -42,6 +44,9 @@ public class EventReplayer implements Runnable {
 			e.printStackTrace();
 		}
 		startReadInputStreamThread();
+		if(editor.getActive()) {
+			coordinatorThread();
+		}
 	}
 
 	public void run() {
@@ -53,9 +58,12 @@ public class EventReplayer implements Runnable {
 					@Override
 					public void run() {
 						try {
-							output.writeObject(event);
+							if(!editor.getActive()) {
+								output.writeObject(event);
+							} else {
+								sequencingQueue.add(event);
+							}
 						} catch (IOException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
@@ -74,7 +82,11 @@ public class EventReplayer implements Runnable {
 				try {
 					TextEvent event;
 					while((event =  (TextEvent) input.readObject()) != null) {
-						event.doEvent(editor);
+						if(editor.getActive()) {
+							sequencingQueue.add(event);
+						} else {
+							event.doEvent(editor);
+						}
 					}
 					if(!client.isClosed()) {
 						output.writeObject(null);
@@ -98,6 +110,30 @@ public class EventReplayer implements Runnable {
 		};
 		Thread queueThread = new Thread(streamToQueue);
 		queueThread.start();
+	}
+	
+	private void coordinatorThread() {
+		Runnable r = new Runnable() {
+
+			@Override
+			public void run() {
+				while(editor.getActive()) {
+					try {
+						TextEvent event = sequencingQueue.take();
+						output.writeObject(event);
+						event.doEvent(editor);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+		};
+		Thread t = new Thread(r);
+		t.start();
 	}
 	/* 
 	 * Will send null to the other peer if the connection is not closed.
