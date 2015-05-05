@@ -354,6 +354,10 @@ public class DistributedTextEditor extends JFrame {
 	public JTextArea getTextArea() {
 		return area1;
 	}
+	
+	public LamportClock getLamportClock() {
+		return lc;
+	}
 
 	public static void main(String[] arg) {
 		editor = new DistributedTextEditor();
