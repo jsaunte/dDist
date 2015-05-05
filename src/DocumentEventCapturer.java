@@ -50,14 +50,14 @@ public class DocumentEventCapturer extends DocumentFilter {
 					throws BadLocationException {
 		lc.increment();
 		eventHistory.add(new TextInsertEvent(offset, str, lc.getTimeStamp()));
-		//super.insertString(fb, offset, str, a);
+		super.insertString(fb, offset, str, a);
 	}	
 
 	public void remove(FilterBypass fb, int offset, int length) 					
 			throws BadLocationException {
 		lc.increment();
 		eventHistory.add(new TextRemoveEvent(offset, length, lc.getTimeStamp()));
-		//super.remove(fb, offset, length);
+		super.remove(fb, offset, length);
 	}
 
 	public void replace(FilterBypass fb, int offset,
@@ -71,6 +71,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 		lc.increment();
 		eventHistory.add(new TextInsertEvent(offset, str, lc.getTimeStamp()));
 		
-		//super.replace(fb, offset, length, str, a);
+		super.replace(fb, offset, length, str, a);
 	} 
 }
