@@ -25,8 +25,8 @@ public class LamportClock implements Comparable<LamportClock> {
 	@Override
 	public int compareTo(LamportClock other) {
 		if(counter == other.counter) {
-			return other.id - id;
+			return id - other.id;
 		}
-		return other.counter - counter;
+		return counter - other.counter;
 	}	
 }
