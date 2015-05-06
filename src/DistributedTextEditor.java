@@ -131,7 +131,7 @@ public class DistributedTextEditor extends JFrame {
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
-								dec = new DocumentEventCapturer(lc);
+								dec = new DocumentEventCapturer(lc, clientSocket);
 								setDocumentFilter(dec);
 								er = new EventReplayer(editor, dec, area2, clientSocket); 
 								ert = new Thread(er);
@@ -217,7 +217,7 @@ public class DistributedTextEditor extends JFrame {
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
 				lc = new LamportClock(2);
-				dec = new DocumentEventCapturer(lc);
+				dec = new DocumentEventCapturer(lc, clientSocket);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
 				er = new EventReplayer(editor, dec, area2, clientSocket);
 				ert = new Thread(er);

@@ -1,4 +1,6 @@
-public class TimeStamp implements Comparable<TimeStamp> {
+import java.io.Serializable;
+
+public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 	private int counter, id;
 	
 	public TimeStamp(int counter, int id) {

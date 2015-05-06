@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * 
@@ -24,6 +26,8 @@ public class EventReplayer implements Runnable {
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
+	private PriorityBlockingQueue<TextEvent> eventHistory;
+	private HashMap<TextEvent, Boolean> map;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -35,6 +39,8 @@ public class EventReplayer implements Runnable {
 		this.area = area;
 		this.client = c;
 		this.editor = editor;
+		eventHistory = dec.eventHistory;
+		map = new HashMap<TextEvent, Boolean>();
 		try {
 			output = new ObjectOutputStream(c.getOutputStream());
 			input = new ObjectInputStream(c.getInputStream());
@@ -47,22 +53,18 @@ public class EventReplayer implements Runnable {
 	public void run() {
 		boolean wasInterrupted = false;
 		while (!wasInterrupted) {
-			try {
-				final TextEvent event = dec.take();
-				EventQueue.invokeLater(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							output.writeObject(event);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+			if(!eventHistory.isEmpty()) {
+				TextEvent head = eventHistory.peek();
+				if(map.containsKey(head)) {
+					try {
+						TextEvent e = eventHistory.take();
+						e.doEvent(editor);
+						map.remove(head);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
 					}
-				});
-			} catch (Exception _) {
-				wasInterrupted = true;
-			}
+				}
+			}		
 		}
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
 	}
@@ -72,9 +74,18 @@ public class EventReplayer implements Runnable {
 			@Override
 			public void run() {
 				try {
-					TextEvent event;
-					while((event =  (TextEvent) input.readObject()) != null) {
-						event.doEvent(editor);
+					Object o;
+					while((o = input.readObject()) != null) {
+						if(o instanceof TextEvent) {
+							TextEvent e = (TextEvent) o;
+							eventHistory.add(e);
+							output.writeObject(new Acknowledge(e));
+							map.put(e, true);
+						} else if (o instanceof Acknowledge){
+							Acknowledge a = (Acknowledge) o;
+							map.put(a.getEvent(), true);
+						}
+						
 					}
 					if(!client.isClosed()) {
 						output.writeObject(null);
@@ -84,6 +95,7 @@ public class EventReplayer implements Runnable {
 					if(!editor.getActive()) {
 						editor.disconnect();
 					}
+					e.printStackTrace();
 					editor.setErrorMessage("Connection lost");
 				}
 				if(!editor.getActive()) {
