@@ -8,6 +8,8 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 
@@ -27,7 +29,8 @@ public class EventReplayer implements Runnable {
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
-	private HashMap<TextEvent, Boolean> map;
+	private HashMap<TimeStamp, Boolean> map;
+	private Lock mapLock;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -40,9 +43,10 @@ public class EventReplayer implements Runnable {
 		this.client = c;
 		this.editor = editor;
 		eventHistory = dec.eventHistory;
-		map = new HashMap<TextEvent, Boolean>();
+		map = new HashMap<TimeStamp, Boolean>();
+		mapLock = new ReentrantLock();
 		try {
-			output = new ObjectOutputStream(c.getOutputStream());
+			output = dec.getOutputStream();
 			input = new ObjectInputStream(c.getInputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -55,15 +59,27 @@ public class EventReplayer implements Runnable {
 		while (!wasInterrupted) {
 			if(!eventHistory.isEmpty()) {
 				TextEvent head = eventHistory.peek();
-				if(map.containsKey(head)) {
-					try {
-						TextEvent e = eventHistory.take();
-						e.doEvent(editor);
-						map.remove(head);
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
+				TimeStamp match = null;
+				mapLock.lock();
+				for(TimeStamp t : map.keySet()) {
+					if(head.getTimeStamp().equals(t)) {
+						try {
+							match = t;
+							TextEvent e = eventHistory.take();
+							e.doEvent(editor);
+							if(editor.getActive()) {
+								System.out.println("at doEvent");
+							}
+							
+						} catch (InterruptedException e1) {
+							e1.printStackTrace();
+						}
 					}
 				}
+				if(match != null) {
+					map.remove(match);
+				}
+				mapLock.unlock();
 			}		
 		}
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
@@ -80,12 +96,15 @@ public class EventReplayer implements Runnable {
 							TextEvent e = (TextEvent) o;
 							eventHistory.add(e);
 							output.writeObject(new Acknowledge(e));
-							map.put(e, true);
+							mapLock.lock();
+							map.put(e.getTimeStamp(), true);
+							mapLock.unlock();
 						} else if (o instanceof Acknowledge){
 							Acknowledge a = (Acknowledge) o;
-							map.put(a.getEvent(), true);
+							mapLock.lock();
+							map.put(a.getEvent().getTimeStamp(), true);
+							mapLock.unlock(); 
 						}
-						
 					}
 					if(!client.isClosed()) {
 						output.writeObject(null);
@@ -95,7 +114,6 @@ public class EventReplayer implements Runnable {
 					if(!editor.getActive()) {
 						editor.disconnect();
 					}
-					e.printStackTrace();
 					editor.setErrorMessage("Connection lost");
 				}
 				if(!editor.getActive()) {

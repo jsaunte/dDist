@@ -19,4 +19,17 @@ public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 		}
 		return counter - other.counter;
 	}
+	
+	public boolean equals(Object other) {
+		if(other == null) return false;
+		if(this == other) return true;
+		if(this.getClass() != other.getClass()) return false;
+		TimeStamp t = (TimeStamp) other;
+		if(counter == t.counter && id == t.id) return true;
+		return false;
+	}
+	
+	public int hashCode() {
+		return (31*id) + (31*counter);
+	}
 }

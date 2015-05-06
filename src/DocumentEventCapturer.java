@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.Socket;
 import java.rmi.RemoteException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import javax.swing.text.AttributeSet;
@@ -33,14 +32,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private LamportClock lc;
 	private Socket client;
 	private ObjectOutputStream output;
-	private ObjectInputStream input;
 
 	public DocumentEventCapturer(LamportClock lc, Socket client) {
 		this.client = client;
 		this.lc = lc;
 		try {
 			output = new ObjectOutputStream(client.getOutputStream());
-			input = new ObjectInputStream(client.getInputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -106,5 +103,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		}
 
 //		super.replace(fb, offset, length, str, a);
+	}
+	
+	public ObjectOutputStream getOutputStream() {
+		return output;
 	}
 }
