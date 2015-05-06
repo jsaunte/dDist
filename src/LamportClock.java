@@ -19,7 +19,7 @@ public class LamportClock implements Comparable<LamportClock> {
 	}
 	
 	public void setMaxTime(LamportClock other) {
-		counter = Integer.max(counter, other.counter);
+		counter = Math.max(counter, other.counter);
 	}
 	
 	@Override

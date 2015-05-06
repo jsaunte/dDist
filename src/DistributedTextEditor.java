@@ -126,7 +126,7 @@ public class DistributedTextEditor extends JFrame {
 						while(active) {							
 							clientSocket = waitForConnectionFromClient();
 							lc = new LamportClock(1);
-							area1.setText("");
+							area1.setText("          ");
 							resetArea2();
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
@@ -210,7 +210,7 @@ public class DistributedTextEditor extends JFrame {
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();
-			area1.setText("");
+			area1.setText("          ");
 			resetArea2();
 			try {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
@@ -228,7 +228,6 @@ public class DistributedTextEditor extends JFrame {
 				Listen.setEnabled(false);
 				Save.setEnabled(false);
 				SaveAs.setEnabled(false);
-
 			} catch (NumberFormatException | IOException e1) {
 				setTitle("Unable to connect");
 			}

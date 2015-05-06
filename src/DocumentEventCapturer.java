@@ -2,6 +2,8 @@ import java.io.*;
 import java.net.Socket;
 import java.rmi.RemoteException;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -32,10 +34,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private LamportClock lc;
 	private Socket client;
 	private ObjectOutputStream output;
+	private Lock eventHistoryLock;
 
 	public DocumentEventCapturer(LamportClock lc, Socket client) {
 		this.client = client;
 		this.lc = lc;
+		eventHistoryLock = new ReentrantLock();
 		try {
 			output = new ObjectOutputStream(client.getOutputStream());
 		} catch (IOException e) {
@@ -59,7 +63,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 			String str, AttributeSet a) throws BadLocationException {
 		lc.increment();
 		TextEvent e = new TextInsertEvent(offset, str, lc.getTimeStamp());
+		eventHistoryLock.lock();
 		eventHistory.add(e);
+		eventHistoryLock.unlock();
 		try {
 			output.writeObject(e);
 		} catch (IOException e1) {
@@ -72,7 +78,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 			throws BadLocationException {
 		lc.increment();
 		TextEvent e = new TextRemoveEvent(offset, length, lc.getTimeStamp());
+		eventHistoryLock.lock();
 		eventHistory.add(e);
+		eventHistoryLock.unlock();
 		try {
 			output.writeObject(e);
 		} catch (IOException e1) {
@@ -86,7 +94,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		if (length > 0) {
 			lc.increment();
 			TextEvent e1 = new TextRemoveEvent(offset, length, lc.getTimeStamp());
+			eventHistoryLock.lock();
 			eventHistory.add(e1);
+			eventHistoryLock.unlock();
 			try {
 				output.writeObject(e1);
 			} catch (IOException ex) {
@@ -95,7 +105,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		}
 		lc.increment();
 		TextEvent e2 = new TextInsertEvent(offset, str, lc.getTimeStamp());
+		eventHistoryLock.lock();
 		eventHistory.add(e2);
+		eventHistoryLock.unlock();
 		try {
 			output.writeObject(e2);
 		} catch (IOException ex) {
@@ -107,5 +119,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 	
 	public ObjectOutputStream getOutputStream() {
 		return output;
+	}
+	
+	public Lock getEventHistoryLock() {
+		return eventHistoryLock;
 	}
 }

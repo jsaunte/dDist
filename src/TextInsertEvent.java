@@ -42,4 +42,12 @@ public class TextInsertEvent implements TextEvent  {
 	public int compareTo(TextEvent other) {
 		return ts.compareTo(other.getTimeStamp());
 	}
+	@Override
+	public int getOffset() {
+		return offset;
+	}
+	@Override
+	public void setOffset(int value) {
+		offset = value;
+	}
 }

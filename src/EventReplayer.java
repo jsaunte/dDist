@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -30,7 +30,7 @@ public class EventReplayer implements Runnable {
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Boolean> map;
-	private Lock mapLock;
+	private Lock mapLock, eventHistoryLock;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -45,6 +45,7 @@ public class EventReplayer implements Runnable {
 		eventHistory = dec.eventHistory;
 		map = new HashMap<TimeStamp, Boolean>();
 		mapLock = new ReentrantLock();
+		eventHistoryLock = dec.getEventHistoryLock();
 		try {
 			output = dec.getOutputStream();
 			input = new ObjectInputStream(c.getInputStream());
@@ -65,11 +66,11 @@ public class EventReplayer implements Runnable {
 					if(head.getTimeStamp().equals(t)) {
 						try {
 							match = t;
+							eventHistoryLock.lock();
 							TextEvent e = eventHistory.take();
 							e.doEvent(editor);
-							if(editor.getActive()) {
-								System.out.println("at doEvent");
-							}
+							fixOffset(e);
+							eventHistoryLock.unlock();
 							
 						} catch (InterruptedException e1) {
 							e1.printStackTrace();
@@ -94,7 +95,9 @@ public class EventReplayer implements Runnable {
 					while((o = input.readObject()) != null) {
 						if(o instanceof TextEvent) {
 							TextEvent e = (TextEvent) o;
+							eventHistoryLock.lock();
 							eventHistory.add(e);
+							eventHistoryLock.unlock();
 							output.writeObject(new Acknowledge(e));
 							mapLock.lock();
 							map.put(e.getTimeStamp(), true);
@@ -139,6 +142,23 @@ public class EventReplayer implements Runnable {
 			}
 		} catch (IOException e) {
 			editor.setErrorMessage("Connection lost stop");
+		}
+	}
+	
+	public void fixOffset(TextEvent head) {
+		int maxOffset = area.getDocument().getLength();
+		int sgn = 1;
+		if (head instanceof TextRemoveEvent) {
+			sgn = -1;
+		}
+		for(TextEvent e : eventHistory) {
+			if (e.getOffset() >= head.getOffset()) {
+				int newOffset = e.getOffset() + (sgn * head.getOffset());
+				e.setOffset(newOffset);
+				if(newOffset > maxOffset) {
+					e.setOffset(maxOffset);
+				}
+			}			
 		}
 	}
 }

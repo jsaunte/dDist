@@ -1,3 +1,5 @@
 /TestQueue.class
 /Acknowledge.class
 /EventReplayer$1.class
+/TextInsertEvent$1.class
+/TextRemoveEvent$1.class
