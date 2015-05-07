@@ -13,11 +13,9 @@ public class TextInsertEvent implements TextEvent  {
 	 */
 	private static final long serialVersionUID = -3677145398605145841L;
 	private String text;
-	private int offset;
 	private TimeStamp ts;
 	
-	public TextInsertEvent(int offset, String text, TimeStamp ts) {
-		this.offset = offset;
+	public TextInsertEvent(String text, TimeStamp ts) {
 		this.text = text;
 		this.ts = ts;
 	}
@@ -46,14 +44,7 @@ public class TextInsertEvent implements TextEvent  {
 	public int compareTo(TextEvent other) {
 		return ts.compareTo(other.getTimeStamp());
 	}
-	@Override
-	public int getOffset() {
-		return offset;
-	}
-	@Override
-	public void setOffset(int value) {
-		offset = value;
-	}
+
 	@Override
 	public int getLength() {
 		return text.length();

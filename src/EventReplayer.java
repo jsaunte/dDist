@@ -1,11 +1,6 @@
-import javax.swing.JTextArea;
-
-import java.awt.EventQueue;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
@@ -23,16 +18,13 @@ import java.util.concurrent.locks.ReentrantLock;
 public class EventReplayer implements Runnable {
 
 	private DocumentEventCapturer dec;
-	private JTextArea area;
 	private Socket client;
-	private ObjectOutputStream output;
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Boolean> map;
 	private Lock mapLock, eventHistoryLock;
 	private LamportClock lc;
-	private int caret;
 	private HashMap<Integer, Integer> carets;
 	
 	/*
@@ -40,10 +32,9 @@ public class EventReplayer implements Runnable {
 	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
 	 * It calls on method on the editor to update it appropriately. 
 	 */
-	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, JTextArea area, Socket c, LamportClock lc) {
+	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, Socket c, LamportClock lc) {
 		this.dec = dec;
 		this.lc = lc;
-		this.area = area;
 		this.client = c;
 		this.editor = editor;
 		eventHistory = dec.eventHistory;
@@ -53,11 +44,14 @@ public class EventReplayer implements Runnable {
 		carets.put(2, 0);
 		mapLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
-			output = dec.getOutputStream();
-			input = dec.getInputStream();
+		input = dec.getInputStream();
 		startReadInputStreamThread();
 	}
-
+	
+	/** 
+	 * When the EventReplayer runs, it empties the eventHistory. Whenever an element is taken out of the queue, it checks that the event has been acknowledged. 
+	 * Then it updates the position of the carets, depending on which event it is.  
+	 */
 	public void run() {
 		boolean wasInterrupted = false;
 		while (!wasInterrupted) {
@@ -104,6 +98,12 @@ public class EventReplayer implements Runnable {
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
 	}
 	
+	/**
+	 * This thread continously reads input from the other peer. 
+	 * Reading an event, will store the event in the priority-queue, and acknowledges the event for both peers.
+	 * Reading an acknowledgement will put this acknowledgement into a map.
+	 * Reading a caretUpdate will update the position of the caret for the given id.
+	 */
 	private void startReadInputStreamThread() {
 		Runnable streamToQueue = new Runnable() {
 			@Override
@@ -140,7 +140,6 @@ public class EventReplayer implements Runnable {
 						editor.disconnect();
 					}
 					editor.setErrorMessage("Connection lost");
-					e.printStackTrace();
 				}
 				if(!editor.getActive()) {
 					editor.disconnect();
@@ -161,23 +160,6 @@ public class EventReplayer implements Runnable {
 	public void stopStreamToQueue() {
 		if(!client.isClosed()) {
 			dec.writeObjectToStream(null);
-		}
-	}
-	
-	public void fixOffset(TextEvent head) {
-		int maxOffset = area.getDocument().getLength();
-		int sgn = 1;
-		if (head instanceof TextRemoveEvent) {
-			sgn = -1;
-		}
-		for(TextEvent e : eventHistory) {
-			if (e.getOffset() == head.getOffset()) {
-				int newOffset = e.getOffset() + (sgn * head.getOffset());
-				e.setOffset(newOffset);
-				if(newOffset > maxOffset) {
-					e.setOffset(maxOffset);
-				}
-			}			
 		}
 	}
 	

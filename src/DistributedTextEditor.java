@@ -1,4 +1,3 @@
-
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -6,13 +5,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-
 import javax.swing.*;
 import javax.swing.text.*;
-import javax.swing.event.*;
 
 
 public class DistributedTextEditor extends JFrame {
+
+	private static final long serialVersionUID = -1412971829037207445L;
 
 	private static DistributedTextEditor editor;
 
@@ -88,6 +87,7 @@ public class DistributedTextEditor extends JFrame {
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		pack();
 		area1.addKeyListener(k1);
+		area1.addMouseListener(m1);
 		setTitle("Disconnected");
 		setVisible(true);
 		area1.insert("Example of how to capture stuff from the event queue and replay it in another buffer.\n" +
@@ -96,6 +96,8 @@ public class DistributedTextEditor extends JFrame {
 
 	}
 	
+	
+	
 	private KeyListener k1 = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
 			changed = true;
@@ -103,18 +105,28 @@ public class DistributedTextEditor extends JFrame {
 			SaveAs.setEnabled(true);
 		}
 		
+		/**
+		 * The keyReleased event ensures that the caret-position is updated for both peers, when the user moves the caret with the arrow-keys.
+		 */		
 		public void keyReleased(KeyEvent e) {
 			int left = e.VK_LEFT;
 			int right = e.VK_RIGHT;
 			int up = e.VK_UP;
 			int down = e.VK_DOWN;
 			if(e.getKeyCode() == left || e.getKeyCode() == right || e.getKeyCode() == up || e.getKeyCode() == down) {
-				ObjectOutputStream output = dec.getOutputStream();
-				try {
-					output.writeObject(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
+				dec.writeObjectToStream(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
+				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
+			}
+		}
+	};
+	
+	/**
+	 * This mouselistener ensures that both peers have an updated caret-position for this user, when he moves his caret by a mouseclick.
+	 */
+	private MouseListener m1 = new MouseAdapter() {
+		public void mouseReleased(MouseEvent e) {
+			if(e.getButton() == e.BUTTON1) {
+				dec.writeObjectToStream(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
 				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
 			}
 		}
@@ -149,7 +161,7 @@ public class DistributedTextEditor extends JFrame {
 								connected = true;
 								dec = new DocumentEventCapturer(lc, clientSocket);
 								setDocumentFilter(dec);
-								er = new EventReplayer(editor, dec, area2, clientSocket,lc); 
+								er = new EventReplayer(editor, dec, clientSocket,lc); 
 								ert = new Thread(er);
 								ert.start();
 							}
@@ -235,7 +247,7 @@ public class DistributedTextEditor extends JFrame {
 				lc = new LamportClock(2);
 				dec = new DocumentEventCapturer(lc, clientSocket);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(editor, dec, area2, clientSocket,lc);
+				er = new EventReplayer(editor, dec, clientSocket,lc);
 				ert = new Thread(er);
 				ert.start();
 				changed = false;
@@ -247,7 +259,6 @@ public class DistributedTextEditor extends JFrame {
 			} catch (NumberFormatException | IOException e1) {
 				setTitle("Unable to connect");
 			}
-
 		}
 	};
 
@@ -283,10 +294,6 @@ public class DistributedTextEditor extends JFrame {
 
 	}
 
-	public void setDocumentFilter(DocumentFilter filter) {
-		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
-	}
-
 	Action Save = new AbstractAction("Save") {
 		public void actionPerformed(ActionEvent e) {
 			if(!currentFile.equals("Untitled"))
@@ -310,7 +317,6 @@ public class DistributedTextEditor extends JFrame {
 	};
 
 	ActionMap m = area1.getActionMap();
-
 	Action Copy = m.get(DefaultEditorKit.copyAction);
 	Action Paste = m.get(DefaultEditorKit.pasteAction);
 
@@ -339,14 +345,26 @@ public class DistributedTextEditor extends JFrame {
 		}
 	}
 
-	public void resetArea2() {
-		area2.setText("");
-	}
-
 	public boolean getActive() {
 		return active;
 	}
 
+	public DocumentFilter getDocumentFilter() {
+		return dec;
+	}
+	
+	public JTextArea getTextArea() {
+		return area1;
+	}
+	
+	public void setDocumentFilter(DocumentFilter filter) {
+		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
+	}
+	
+	public void setErrorMessage(String s) {
+		area2.setText("Error: " + s);
+	}
+	
 	public void setTitleToListen() {
 		InetAddress local;
 		try {
@@ -357,17 +375,9 @@ public class DistributedTextEditor extends JFrame {
 		}
 
 	}
-
-	public void setErrorMessage(String s) {
-		area2.setText("Error: " + s);
-	}
 	
-	public DocumentFilter getDocumentFilter() {
-		return dec;
-	}
-	
-	public JTextArea getTextArea() {
-		return area1;
+	public void resetArea2() {
+		area2.setText("");
 	}
 
 	public static void main(String[] arg) {

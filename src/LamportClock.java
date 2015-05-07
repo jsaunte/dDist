@@ -1,4 +1,12 @@
-public class LamportClock implements Comparable<LamportClock> {
+
+/**
+ * 
+ * @author Hjortehandlerne
+ *	The LamportClock serves as a logical clock for a Distributed Text Editor.
+ *	The LamportClock increments it's time whenever an textevent has occured.
+ *	It issues timestamps whenever asked for. 
+ */
+public class LamportClock  {
 	private int counter;
 	private int id;
 	
@@ -24,12 +32,4 @@ public class LamportClock implements Comparable<LamportClock> {
 	public void setMaxTime(TimeStamp other) {
 		counter = Math.max(counter, other.getTime());
 	}
-	
-	@Override
-	public int compareTo(LamportClock other) {
-		if(counter == other.counter) {
-			return id - other.id;
-		}
-		return counter - other.counter;
-	}	
 }

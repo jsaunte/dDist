@@ -1,5 +1,10 @@
 import java.io.Serializable;
 
+/**
+ * 
+ * @author Hjortehandlerne
+ * The CaretUpdate is used to tell the other peer to update the caret-position for this id.
+ */
 
 public class CaretUpdate implements Serializable {
 	/**

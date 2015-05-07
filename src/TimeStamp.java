@@ -1,9 +1,14 @@
 import java.io.Serializable;
 
+/**
+ * 
+ * @author Hjortehandlerne
+ * The TimeStamps are issued by a LamportClock, on a given event. 
+ * The TimeStamp has the time of the LamportClock when it was issued, and the ID of the user who issued the timestamp.
+ * The TimeStamp is comparable, so that the PriorityQueue may sort Events according to their timestamps.
+ */
+
 public class TimeStamp implements Serializable, Comparable<TimeStamp> {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 8381138328320766514L;
 	private int counter, id;
 	

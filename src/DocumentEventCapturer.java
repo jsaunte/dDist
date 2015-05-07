@@ -64,43 +64,39 @@ public class DocumentEventCapturer extends DocumentFilter {
 	public synchronized void insertString(FilterBypass fb, int offset,
 			String str, AttributeSet a) throws BadLocationException {
 		lc.increment();
-		TextEvent e = new TextInsertEvent(offset, str, lc.getTimeStamp());
+		TextEvent e = new TextInsertEvent(str, lc.getTimeStamp());
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
 		writeObjectToStream(e);
-//		super.insertString(fb, offset, str, a);
 	}
 
 	public synchronized void remove(FilterBypass fb, int offset, int length)
 			throws BadLocationException {
 		lc.increment();
-		TextEvent e = new TextRemoveEvent(offset, length, lc.getTimeStamp());
+		TextEvent e = new TextRemoveEvent(length, lc.getTimeStamp());
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
 		writeObjectToStream(e);
-//		super.remove(fb, offset, length);
 	}
 
 	public synchronized void replace(FilterBypass fb, int offset, int length,
 			String str, AttributeSet a) throws BadLocationException {
 		if (length > 0) {
 			lc.increment();
-			TextEvent e1 = new TextRemoveEvent(offset, length, lc.getTimeStamp());
+			TextEvent e1 = new TextRemoveEvent(length, lc.getTimeStamp());
 			eventHistoryLock.lock();
 			eventHistory.add(e1);
 			eventHistoryLock.unlock();
 			writeObjectToStream(e1);
 		}
 		lc.increment();
-		TextEvent e2 = new TextInsertEvent(offset, str, lc.getTimeStamp());
+		TextEvent e2 = new TextInsertEvent(str, lc.getTimeStamp());
 		eventHistoryLock.lock();
 		eventHistory.add(e2);
 		eventHistoryLock.unlock();
 		writeObjectToStream(e2);
-
-//		super.replace(fb, offset, length, str, a);
 	}
 	
 	public ObjectOutputStream getOutputStream() {
