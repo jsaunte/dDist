@@ -130,7 +130,7 @@ public class DistributedTextEditor extends JFrame {
 	 */
 	Action Listen = new AbstractAction("Listen") {
 		public void actionPerformed(ActionEvent e) {
-			saveOld();		
+//			saveOld();		
 			final InetAddress local;
 			active = true;
 			try {
@@ -225,7 +225,7 @@ public class DistributedTextEditor extends JFrame {
 	 */
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
-			saveOld();
+//			saveOld();
 			area1.setText("");
 			resetArea2();
 			try {

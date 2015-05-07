@@ -77,11 +77,20 @@ public class EventReplayer implements Runnable {
 							TextEvent e = eventHistory.take();
 							int idOfSender = e.getTimeStamp().getID();
 							int pos = carets.get(idOfSender);
-							e.doEvent(editor, pos);							
+							e.doEvent(editor, pos);				
+							
 							if(e instanceof TextInsertEvent) {
-								carets.put(idOfSender, pos + e.getLength());
+								for(int i : carets.keySet()) {
+									if(carets.get(i) >= pos) {
+										carets.put(i, carets.get(i) + e.getLength());
+									}
+								}
 							} else if (e instanceof TextRemoveEvent) {
-								carets.put(idOfSender, pos - e.getLength());
+								for(int i : carets.keySet()) {
+									if(carets.get(i) >= pos) {
+										carets.put(i, carets.get(i) - e.getLength());
+									}
+								}
 							}
 							eventHistoryLock.unlock();
 							
