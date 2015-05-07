@@ -4,6 +4,10 @@ import javax.swing.text.DocumentFilter;
 
 public class TextRemoveEvent implements TextEvent {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2690947405139638827L;
 	private int length;
 	private int offset;
 	private TimeStamp ts;

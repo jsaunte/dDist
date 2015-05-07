@@ -8,6 +8,10 @@ import javax.swing.text.DocumentFilter;
  *
  */
 public class TextInsertEvent implements TextEvent  {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3677145398605145841L;
 	private String text;
 	private int offset;
 	private TimeStamp ts;

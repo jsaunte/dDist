@@ -6,6 +6,10 @@ import java.io.Serializable;
  *
  */
 public class MyTextEvent implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4003721487989963698L;
 	MyTextEvent(int offset) {
 		this.offset = offset;
 	}

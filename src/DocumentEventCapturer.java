@@ -34,6 +34,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private LamportClock lc;
 	private Socket client;
 	private ObjectOutputStream output;
+	private ObjectInputStream input;
 	private Lock eventHistoryLock;
 
 	public DocumentEventCapturer(LamportClock lc, Socket client) {
@@ -42,6 +43,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock = new ReentrantLock();
 		try {
 			output = new ObjectOutputStream(client.getOutputStream());
+			input = new ObjectInputStream(client.getInputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -66,11 +68,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
-		try {
-			output.writeObject(e);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		writeObjectToStream(e);
 //		super.insertString(fb, offset, str, a);
 	}
 
@@ -81,11 +79,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
-		try {
-			output.writeObject(e);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		writeObjectToStream(e);
 //		super.remove(fb, offset, length);
 	}
 
@@ -97,22 +91,14 @@ public class DocumentEventCapturer extends DocumentFilter {
 			eventHistoryLock.lock();
 			eventHistory.add(e1);
 			eventHistoryLock.unlock();
-			try {
-				output.writeObject(e1);
-			} catch (IOException ex) {
-				ex.printStackTrace();
-			}
+			writeObjectToStream(e1);
 		}
 		lc.increment();
 		TextEvent e2 = new TextInsertEvent(offset, str, lc.getTimeStamp());
 		eventHistoryLock.lock();
 		eventHistory.add(e2);
 		eventHistoryLock.unlock();
-		try {
-			output.writeObject(e2);
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		}
+		writeObjectToStream(e2);
 
 //		super.replace(fb, offset, length, str, a);
 	}
@@ -123,5 +109,19 @@ public class DocumentEventCapturer extends DocumentFilter {
 	
 	public Lock getEventHistoryLock() {
 		return eventHistoryLock;
+	}
+
+	public ObjectInputStream getInputStream() {
+		return input;
+	}
+	
+	public synchronized void writeObjectToStream(Object o) {
+		try {
+			if(!client.isClosed()) {
+				output.writeObject(o);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

@@ -1,6 +1,10 @@
 import java.io.Serializable;
 
 public class TimeStamp implements Serializable, Comparable<TimeStamp> {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 8381138328320766514L;
 	private int counter, id;
 	
 	public TimeStamp(int counter, int id) {

@@ -53,12 +53,8 @@ public class EventReplayer implements Runnable {
 		carets.put(2, 0);
 		mapLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
-		try {
 			output = dec.getOutputStream();
-			input = new ObjectInputStream(c.getInputStream());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+			input = dec.getInputStream();
 		startReadInputStreamThread();
 	}
 
@@ -121,7 +117,7 @@ public class EventReplayer implements Runnable {
 							eventHistoryLock.lock();
 							eventHistory.add(e);
 							eventHistoryLock.unlock();
-							output.writeObject(new Acknowledge(e));
+							dec.writeObjectToStream(new Acknowledge(e));
 							mapLock.lock();
 							map.put(e.getTimeStamp(), true);
 							mapLock.unlock();
@@ -136,7 +132,7 @@ public class EventReplayer implements Runnable {
 						}
 					}
 					if(!client.isClosed()) {
-						output.writeObject(null);
+						dec.writeObjectToStream(null);
 					}
 					client.close();
 				} catch (IOException | ClassNotFoundException e) {
@@ -144,6 +140,7 @@ public class EventReplayer implements Runnable {
 						editor.disconnect();
 					}
 					editor.setErrorMessage("Connection lost");
+					e.printStackTrace();
 				}
 				if(!editor.getActive()) {
 					editor.disconnect();
@@ -162,12 +159,8 @@ public class EventReplayer implements Runnable {
 	 * Will send null to the other peer if the connection is not closed.
 	 */
 	public void stopStreamToQueue() {
-		try {
-			if(!client.isClosed()) {
-				output.writeObject(null);
-			}
-		} catch (IOException e) {
-			editor.setErrorMessage("Connection lost stop");
+		if(!client.isClosed()) {
+			dec.writeObjectToStream(null);
 		}
 	}
 	
