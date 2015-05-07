@@ -10,6 +10,9 @@ public class LamportClock implements Comparable<LamportClock> {
 		return counter;
 	}
 	
+	public int getID() {
+		return id;
+	}
 	public TimeStamp getTimeStamp() {
 		return new TimeStamp(counter, id);
 	}
@@ -18,8 +21,8 @@ public class LamportClock implements Comparable<LamportClock> {
 		counter++;
 	}
 	
-	public void setMaxTime(LamportClock other) {
-		counter = Math.max(counter, other.counter);
+	public void setMaxTime(TimeStamp other) {
+		counter = Math.max(counter, other.getTime());
 	}
 	
 	@Override

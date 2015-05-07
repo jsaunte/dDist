@@ -95,12 +95,28 @@ public class DistributedTextEditor extends JFrame {
 				"Then figure out how it works.\n", 0);
 
 	}
-
+	
 	private KeyListener k1 = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
 			changed = true;
 			Save.setEnabled(true);
 			SaveAs.setEnabled(true);
+		}
+		
+		public void keyReleased(KeyEvent e) {
+			int left = e.VK_LEFT;
+			int right = e.VK_RIGHT;
+			int up = e.VK_UP;
+			int down = e.VK_DOWN;
+			if(e.getKeyCode() == left || e.getKeyCode() == right || e.getKeyCode() == up || e.getKeyCode() == down) {
+				ObjectOutputStream output = dec.getOutputStream();
+				try {
+					output.writeObject(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
+			}
 		}
 	};
 
@@ -126,14 +142,14 @@ public class DistributedTextEditor extends JFrame {
 						while(active) {							
 							clientSocket = waitForConnectionFromClient();
 							lc = new LamportClock(1);
-							area1.setText("          ");
+							area1.setText("");
 							resetArea2();
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
 								dec = new DocumentEventCapturer(lc, clientSocket);
 								setDocumentFilter(dec);
-								er = new EventReplayer(editor, dec, area2, clientSocket); 
+								er = new EventReplayer(editor, dec, area2, clientSocket,lc); 
 								ert = new Thread(er);
 								ert.start();
 							}
@@ -210,7 +226,7 @@ public class DistributedTextEditor extends JFrame {
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
 			saveOld();
-			area1.setText("          ");
+			area1.setText("");
 			resetArea2();
 			try {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
@@ -219,7 +235,7 @@ public class DistributedTextEditor extends JFrame {
 				lc = new LamportClock(2);
 				dec = new DocumentEventCapturer(lc, clientSocket);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(editor, dec, area2, clientSocket);
+				er = new EventReplayer(editor, dec, area2, clientSocket,lc);
 				ert = new Thread(er);
 				ert.start();
 				changed = false;

@@ -31,19 +31,26 @@ public class EventReplayer implements Runnable {
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Boolean> map;
 	private Lock mapLock, eventHistoryLock;
+	private LamportClock lc;
+	private int caret;
+	private HashMap<Integer, Integer> carets;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
 	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
 	 * It calls on method on the editor to update it appropriately. 
 	 */
-	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, JTextArea area, Socket c) {
+	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, JTextArea area, Socket c, LamportClock lc) {
 		this.dec = dec;
+		this.lc = lc;
 		this.area = area;
 		this.client = c;
 		this.editor = editor;
 		eventHistory = dec.eventHistory;
 		map = new HashMap<TimeStamp, Boolean>();
+		carets = new HashMap<Integer, Integer>();
+		carets.put(1, 0);
+		carets.put(2, 0);
 		mapLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
 		try {
@@ -68,8 +75,14 @@ public class EventReplayer implements Runnable {
 							match = t;
 							eventHistoryLock.lock();
 							TextEvent e = eventHistory.take();
-							e.doEvent(editor);
-							fixOffset(e);
+							int idOfSender = e.getTimeStamp().getID();
+							int pos = carets.get(idOfSender);
+							e.doEvent(editor, pos);							
+							if(e instanceof TextInsertEvent) {
+								carets.put(idOfSender, pos + e.getLength());
+							} else if (e instanceof TextRemoveEvent) {
+								carets.put(idOfSender, pos - e.getLength());
+							}
 							eventHistoryLock.unlock();
 							
 						} catch (InterruptedException e1) {
@@ -95,6 +108,7 @@ public class EventReplayer implements Runnable {
 					while((o = input.readObject()) != null) {
 						if(o instanceof TextEvent) {
 							TextEvent e = (TextEvent) o;
+							lc.setMaxTime(e.getTimeStamp());
 							eventHistoryLock.lock();
 							eventHistory.add(e);
 							eventHistoryLock.unlock();
@@ -107,6 +121,9 @@ public class EventReplayer implements Runnable {
 							mapLock.lock();
 							map.put(a.getEvent().getTimeStamp(), true);
 							mapLock.unlock(); 
+						} else if (o instanceof CaretUpdate) {
+							CaretUpdate cu = (CaretUpdate) o;
+							carets.put(cu.getID(), cu.getPos());
 						}
 					}
 					if(!client.isClosed()) {
@@ -152,7 +169,7 @@ public class EventReplayer implements Runnable {
 			sgn = -1;
 		}
 		for(TextEvent e : eventHistory) {
-			if (e.getOffset() >= head.getOffset()) {
+			if (e.getOffset() == head.getOffset()) {
 				int newOffset = e.getOffset() + (sgn * head.getOffset());
 				e.setOffset(newOffset);
 				if(newOffset > maxOffset) {
@@ -160,5 +177,9 @@ public class EventReplayer implements Runnable {
 				}
 			}			
 		}
+	}
+	
+	public void updateCaretPos(int id, int pos) {
+		carets.put(id, pos);
 	}
 }

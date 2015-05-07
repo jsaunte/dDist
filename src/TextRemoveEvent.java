@@ -17,14 +17,14 @@ public class TextRemoveEvent implements TextEvent {
 	public int getLength() { return length; }
 
 	@Override
-	public void doEvent(final DistributedTextEditor editor) {
+	public void doEvent(final DistributedTextEditor editor, final int pos) {
 		EventQueue.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
 				DocumentFilter filter = editor.getDocumentFilter();
 				editor.setDocumentFilter(null);
-				editor.getTextArea().replaceRange(null, offset, offset + length);
+				editor.getTextArea().replaceRange(null, pos - length, pos);
 				editor.setDocumentFilter(filter);
 			}
 			

@@ -20,14 +20,14 @@ public class TextInsertEvent implements TextEvent  {
 	public String getText() { return text; }
 	
 	@Override
-	public void doEvent(final DistributedTextEditor editor) {
+	public void doEvent(final DistributedTextEditor editor, final int pos) {
 		EventQueue.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
 				DocumentFilter filter = editor.getDocumentFilter();
 				editor.setDocumentFilter(null);
-				editor.getTextArea().insert(text, offset);
+				editor.getTextArea().insert(text, pos);
 				editor.setDocumentFilter(filter);
 			}
 			
@@ -49,5 +49,9 @@ public class TextInsertEvent implements TextEvent  {
 	@Override
 	public void setOffset(int value) {
 		offset = value;
+	}
+	@Override
+	public int getLength() {
+		return text.length();
 	}
 }

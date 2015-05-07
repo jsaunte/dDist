@@ -11,6 +11,10 @@ public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 	public int getTime() {
 		return counter;
 	}
+	
+	public int getID() {
+		return id;
+	}
 
 	@Override
 	public int compareTo(TimeStamp other) {
