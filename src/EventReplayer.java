@@ -26,6 +26,7 @@ public class EventReplayer implements Runnable {
 	private Lock mapLock, eventHistoryLock;
 	private LamportClock lc;
 	private HashMap<Integer, Integer> carets;
+	private boolean wasInterrupted = false;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -53,7 +54,6 @@ public class EventReplayer implements Runnable {
 	 * Then it updates the position of the carets, depending on which event it is.  
 	 */
 	public void run() {
-		boolean wasInterrupted = false;
 		while (!wasInterrupted) {
 			if(!eventHistory.isEmpty()) {
 				TextEvent head = eventHistory.peek();
@@ -161,6 +161,7 @@ public class EventReplayer implements Runnable {
 		if(!client.isClosed()) {
 			dec.writeObjectToStream(null);
 		}
+		wasInterrupted = true;
 	}
 	
 	public void updateCaretPos(int id, int pos) {

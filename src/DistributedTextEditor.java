@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+
 import javax.swing.*;
 import javax.swing.text.*;
 
@@ -90,13 +91,33 @@ public class DistributedTextEditor extends JFrame {
 		area1.addMouseListener(m1);
 		setTitle("Disconnected");
 		setVisible(true);
-		area1.insert("Example of how to capture stuff from the event queue and replay it in another buffer.\n" +
-				"Try to type and delete stuff in the top area.\n" + 
-				"Then figure out how it works.\n", 0);
-
+		area1.insert("Welcome to Hjortehandlerne's distributed text editor. \n", 0);
+		
+		this.addWindowListener(w1);
 	}
 	
-	
+	private WindowListener w1 = new WindowListener() {
+		/**
+		 * Kill all active threads
+		 */
+		@Override
+		public void windowClosing(WindowEvent e) {
+			System.exit(0);
+		}
+
+		@Override
+		public void windowActivated(WindowEvent e) {}
+		@Override
+		public void windowClosed(WindowEvent e) {}
+		@Override
+		public void windowDeactivated(WindowEvent e) {}
+		@Override
+		public void windowDeiconified(WindowEvent e) {}
+		@Override
+		public void windowIconified(WindowEvent e) {}
+		@Override
+		public void windowOpened(WindowEvent e) {}	
+	};
 	
 	private KeyListener k1 = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
@@ -142,7 +163,7 @@ public class DistributedTextEditor extends JFrame {
 	 */
 	Action Listen = new AbstractAction("Listen") {
 		public void actionPerformed(ActionEvent e) {
-//			saveOld();		
+			saveOld();		
 			final InetAddress local;
 			active = true;
 			try {
@@ -237,7 +258,7 @@ public class DistributedTextEditor extends JFrame {
 	 */
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
-//			saveOld();
+			saveOld();
 			area1.setText("");
 			resetArea2();
 			try {
