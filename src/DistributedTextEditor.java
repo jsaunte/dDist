@@ -102,7 +102,7 @@ public class DistributedTextEditor extends JFrame {
 		 */
 		@Override
 		public void windowClosing(WindowEvent e) {
-			System.exit(0);
+			disconnect();
 		}
 
 		@Override
@@ -146,7 +146,7 @@ public class DistributedTextEditor extends JFrame {
 	 */
 	private MouseListener m1 = new MouseAdapter() {
 		public void mouseReleased(MouseEvent e) {
-			if(e.getButton() == e.BUTTON1) {
+			if(e.getButton() == e.BUTTON1 && connected) {
 				dec.writeObjectToStream(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
 				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
 			}
