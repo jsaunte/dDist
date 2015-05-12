@@ -2,29 +2,33 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 
 
 public class Peer extends Thread {
-	
+
 	private int id;
 	private int caretPos;
 	private DistributedTextEditor editor;
 	private EventReplayer replayer;
-	private Socket c;
+	private Socket client;
 	private LamportClock lc;
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
-	private Lock eventHistoryLock;
-	
+	private PriorityBlockingQueue<TextEvent> eventHistory;
+
 	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc) {
 		this.editor = editor;
 		this.replayer = replayer;
 		this.id = id;
-		this.c = c;
+		client = c;
 		this.lc = lc;
 		caretPos = 0;
-		
+
+		eventHistory = replayer.getEventHistory();
+		eventHistoryLock = replayer.getEventHistoryLock();
+
 		try {
 			output = new ObjectOutputStream(c.getOutputStream());
 			input = new ObjectInputStream(c.getInputStream());
@@ -32,7 +36,7 @@ public class Peer extends Thread {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public void start() {
 		try {
@@ -41,13 +45,13 @@ public class Peer extends Thread {
 				if(o instanceof TextEvent) {
 					TextEvent e = (TextEvent) o;
 					lc.setMaxTime(e.getTimeStamp());
-					eventHistoryLock.lock();
+					replayer.getEventHistoryLock().lock();
 					eventHistory.add(e);
-					eventHistoryLock.unlock();
-					dec.writeObjectToStream(new Acknowledge(e));
-					mapLock.lock();
-					map.put(e.getTimeStamp(), true);
-					mapLock.unlock();
+					replayer.getEventHistoryLock().unlock();
+					replayer.getDocumentEventCapturer().sendObjectToAllPeers(new Acknowledge(e));
+					replayer.getMapLock().lock();
+					acknowledgements.put(e.getTimeStamp(), true);
+					replayer.getMapLock().unlock();
 				} else if (o instanceof Acknowledge){
 					Acknowledge a = (Acknowledge) o;
 					mapLock.lock();
@@ -76,8 +80,18 @@ public class Peer extends Thread {
 			editor.setDocumentFilter(null);
 		}
 	}
-		
-	}
 	
+	public synchronized void writeObjectToStream(Object o) {
+		try {
+			if(!client.isClosed()) {
+				output.writeObject(o);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 }
+
+
+

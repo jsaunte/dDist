@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.Socket;
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,6 +32,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * are new elements.
 	 */
 	protected PriorityBlockingQueue<TextEvent> eventHistory = new PriorityBlockingQueue<TextEvent>();
+	private ArrayList<Peer> peers;
 	private LamportClock lc;
 	private Socket client;
 	private ObjectOutputStream output;
@@ -41,6 +43,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		this.client = client;
 		this.lc = lc;
 		eventHistoryLock = new ReentrantLock();
+		peers = new ArrayList<Peer>();
 		try {
 			output = new ObjectOutputStream(client.getOutputStream());
 			input = new ObjectInputStream(client.getInputStream());
@@ -111,13 +114,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		return input;
 	}
 	
-	public synchronized void writeObjectToStream(Object o) {
-		try {
-			if(!client.isClosed()) {
-				output.writeObject(o);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+	public void sendObjectToAllPeers(Object o) {
+		for(Peer p : peers) {
+			p.writeObjectToStream(o);
 		}
 	}
 }

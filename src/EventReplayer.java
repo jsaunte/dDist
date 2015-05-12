@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
@@ -22,7 +23,7 @@ public class EventReplayer implements Runnable {
 	private ObjectInputStream input;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
-	private HashMap<TimeStamp, Boolean> map;
+	private HashMap<TimeStamp, ArrayList<Integer>> acknowledgements;
 	private Lock mapLock, eventHistoryLock;
 	private LamportClock lc;
 	private HashMap<Integer, Integer> carets;
@@ -39,7 +40,7 @@ public class EventReplayer implements Runnable {
 		this.client = c;
 		this.editor = editor;
 		eventHistory = dec.eventHistory;
-		map = new HashMap<TimeStamp, Boolean>();
+		acknowledgements = new HashMap<TimeStamp, ArrayList<Integer>>();
 		carets = new HashMap<Integer, Integer>();
 		carets.put(1, 0);
 		carets.put(2, 0);
@@ -59,7 +60,7 @@ public class EventReplayer implements Runnable {
 				TextEvent head = eventHistory.peek();
 				TimeStamp match = null;
 				mapLock.lock();
-				for(TimeStamp t : map.keySet()) {
+				for(TimeStamp t : acknowledgements.keySet()) {
 					if(head.getTimeStamp().equals(t)) {
 						try {
 							match = t;
@@ -90,7 +91,7 @@ public class EventReplayer implements Runnable {
 					}
 				}
 				if(match != null) {
-					map.remove(match);
+					acknowledgements.remove(match);
 				}
 				mapLock.unlock();
 			}		
@@ -119,12 +120,12 @@ public class EventReplayer implements Runnable {
 							eventHistoryLock.unlock();
 							dec.writeObjectToStream(new Acknowledge(e));
 							mapLock.lock();
-							map.put(e.getTimeStamp(), true);
+							acknowledgements.put(e.getTimeStamp(), true);
 							mapLock.unlock();
 						} else if (o instanceof Acknowledge){
 							Acknowledge a = (Acknowledge) o;
 							mapLock.lock();
-							map.put(a.getEvent().getTimeStamp(), true);
+							acknowledgements.put(a.getEvent().getTimeStamp(), true);
 							mapLock.unlock(); 
 						} else if (o instanceof CaretUpdate) {
 							CaretUpdate cu = (CaretUpdate) o;
@@ -182,6 +183,10 @@ public class EventReplayer implements Runnable {
 
 	public LamportClock getLc() {
 		return lc;
+	}
+	
+	public DocumentEventCapturer getDocumentEventCapturer() {
+		return dec;
 	}
 	
 }
