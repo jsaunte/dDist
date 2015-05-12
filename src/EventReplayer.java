@@ -167,4 +167,21 @@ public class EventReplayer implements Runnable {
 	public void updateCaretPos(int id, int pos) {
 		carets.put(id, pos);
 	}
+	
+	public PriorityBlockingQueue<TextEvent> getEventHistory() {
+		return eventHistory;
+	}
+
+	public Lock getMapLock() {
+		return mapLock;
+	}
+
+	public Lock getEventHistoryLock() {
+		return eventHistoryLock;
+	}
+
+	public LamportClock getLc() {
+		return lc;
+	}
+	
 }
