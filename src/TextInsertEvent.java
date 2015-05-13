@@ -29,7 +29,11 @@ public class TextInsertEvent implements TextEvent  {
 			public void run() {
 				DocumentFilter filter = editor.getDocumentFilter();
 				editor.setDocumentFilter(null);
-				editor.getTextArea().insert(text, pos);
+				try {
+					editor.getTextArea().insert(text, pos);
+				} catch (IllegalArgumentException e) {
+					
+				}
 				editor.setDocumentFilter(filter);
 			}
 			

@@ -70,13 +70,13 @@ public class EventReplayer implements Runnable {
 							if(e instanceof TextInsertEvent) {
 								for(int i : carets.keySet()) {
 									if(carets.get(i) >= pos) {
-										carets.put(i, carets.get(i) + e.getLength());
+										updateCaretPos(i, carets.get(i) + e.getLength());
 									}
 								}
 							} else if (e instanceof TextRemoveEvent) {
 								for(int i : carets.keySet()) {
 									if(carets.get(i) >= pos) {
-										carets.put(i, carets.get(i) - e.getLength());
+										updateCaretPos(i, carets.get(i) - e.getLength());
 									}
 								}
 							}
