@@ -135,7 +135,8 @@ public class DistributedTextEditor extends JFrame {
 			int up = e.VK_UP;
 			int down = e.VK_DOWN;
 			if(e.getKeyCode() == left || e.getKeyCode() == right || e.getKeyCode() == up || e.getKeyCode() == down) {
-				dec.writeObjectToStream(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
+				if (dec == null) return;
+				dec.sendObjectToAllPeers(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
 				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
 			}
 		}
@@ -147,7 +148,7 @@ public class DistributedTextEditor extends JFrame {
 	private MouseListener m1 = new MouseAdapter() {
 		public void mouseReleased(MouseEvent e) {
 			if(e.getButton() == e.BUTTON1 && connected) {
-				dec.writeObjectToStream(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
+				dec.sendObjectToAllPeers(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
 				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
 			}
 		}
@@ -180,11 +181,15 @@ public class DistributedTextEditor extends JFrame {
 							if (clientSocket != null) {
 								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 								connected = true;
-								dec = new DocumentEventCapturer(lc, clientSocket);
+								dec = new DocumentEventCapturer(lc);
 								setDocumentFilter(dec);
-								er = new EventReplayer(editor, dec, clientSocket,lc); 
+								er = new EventReplayer(editor, dec, lc); 
 								ert = new Thread(er);
 								ert.start();
+								Peer peer = new Peer(editor, er, 2, clientSocket, lc);
+								dec.getPeers().add(peer);
+								Thread t = new Thread(peer);
+								t.start();
 							}
 						}
 					}
@@ -266,11 +271,15 @@ public class DistributedTextEditor extends JFrame {
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
 				lc = new LamportClock(2);
-				dec = new DocumentEventCapturer(lc, clientSocket);
+				dec = new DocumentEventCapturer(lc);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(editor, dec, clientSocket,lc);
+				er = new EventReplayer(editor, dec, lc);
 				ert = new Thread(er);
 				ert.start();
+				Peer peer = new Peer(editor, er, 2, clientSocket, lc);
+				dec.getPeers().add(peer);
+				Thread t = new Thread(peer);
+				t.start();
 				changed = false;
 				Connect.setEnabled(false);
 				Disconnect.setEnabled(true);

@@ -6,6 +6,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.sql.rowset.spi.SyncResolver;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
@@ -34,22 +35,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	protected PriorityBlockingQueue<TextEvent> eventHistory = new PriorityBlockingQueue<TextEvent>();
 	private ArrayList<Peer> peers;
 	private LamportClock lc;
-	private Socket client;
-	private ObjectOutputStream output;
-	private ObjectInputStream input;
 	private Lock eventHistoryLock;
 
-	public DocumentEventCapturer(LamportClock lc, Socket client) {
-		this.client = client;
+	public DocumentEventCapturer(LamportClock lc) {
 		this.lc = lc;
 		eventHistoryLock = new ReentrantLock();
 		peers = new ArrayList<Peer>();
-		try {
-			output = new ObjectOutputStream(client.getOutputStream());
-			input = new ObjectInputStream(client.getInputStream());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**
@@ -71,7 +62,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
-		writeObjectToStream(e);
+		sendObjectToAllPeers(e);
 	}
 
 	public synchronized void remove(FilterBypass fb, int offset, int length)
@@ -81,7 +72,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock.lock();
 		eventHistory.add(e);
 		eventHistoryLock.unlock();
-		writeObjectToStream(e);
+		sendObjectToAllPeers(e);
 	}
 
 	public synchronized void replace(FilterBypass fb, int offset, int length,
@@ -92,31 +83,31 @@ public class DocumentEventCapturer extends DocumentFilter {
 			eventHistoryLock.lock();
 			eventHistory.add(e1);
 			eventHistoryLock.unlock();
-			writeObjectToStream(e1);
+			sendObjectToAllPeers(e1);
 		}
 		lc.increment();
 		TextEvent e2 = new TextInsertEvent(str, lc.getTimeStamp());
 		eventHistoryLock.lock();
 		eventHistory.add(e2);
 		eventHistoryLock.unlock();
-		writeObjectToStream(e2);
-	}
-	
-	public ObjectOutputStream getOutputStream() {
-		return output;
+		sendObjectToAllPeers(e2);
 	}
 	
 	public Lock getEventHistoryLock() {
 		return eventHistoryLock;
-	}
-
-	public ObjectInputStream getInputStream() {
-		return input;
 	}
 	
 	public void sendObjectToAllPeers(Object o) {
 		for(Peer p : peers) {
 			p.writeObjectToStream(o);
 		}
+	}
+	
+	public synchronized ArrayList<Peer> getPeers() {
+		return peers;
+	}
+	
+	public synchronized void addPeer(Peer p) {
+		peers.add(p);
 	}
 }

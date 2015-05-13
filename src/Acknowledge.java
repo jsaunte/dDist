@@ -20,4 +20,8 @@ public class Acknowledge implements Serializable{
 	public TextEvent getEvent() {
 		return e;
 	}
+	
+	public int getID() {
+		return e.getTimeStamp().getID();
+	}
 }

@@ -3,6 +3,8 @@ import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,11 +21,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class EventReplayer implements Runnable {
 
 	private DocumentEventCapturer dec;
-	private Socket client;
-	private ObjectInputStream input;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
-	private HashMap<TimeStamp, ArrayList<Integer>> acknowledgements;
+	private HashMap<TimeStamp, Set<Integer>> acknowledgements;
 	private Lock mapLock, eventHistoryLock;
 	private LamportClock lc;
 	private HashMap<Integer, Integer> carets;
@@ -34,20 +34,17 @@ public class EventReplayer implements Runnable {
 	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
 	 * It calls on method on the editor to update it appropriately. 
 	 */
-	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, Socket c, LamportClock lc) {
+	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, LamportClock lc) {
 		this.dec = dec;
 		this.lc = lc;
-		this.client = c;
 		this.editor = editor;
 		eventHistory = dec.eventHistory;
-		acknowledgements = new HashMap<TimeStamp, ArrayList<Integer>>();
+		acknowledgements = new HashMap<TimeStamp, Set<Integer>>();
 		carets = new HashMap<Integer, Integer>();
 		carets.put(1, 0);
 		carets.put(2, 0);
 		mapLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
-		input = dec.getInputStream();
-		startReadInputStreamThread();
 	}
 	
 	/** 
@@ -99,73 +96,20 @@ public class EventReplayer implements Runnable {
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
 	}
 	
-	/**
-	 * This thread continously reads input from the other peer. 
-	 * Reading an event, will store the event in the priority-queue, and acknowledges the event for both peers.
-	 * Reading an acknowledgement will put this acknowledgement into a map.
-	 * Reading a caretUpdate will update the position of the caret for the given id.
-	 */
-	private void startReadInputStreamThread() {
-		Runnable streamToQueue = new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Object o;
-					while((o = input.readObject()) != null) {
-						if(o instanceof TextEvent) {
-							TextEvent e = (TextEvent) o;
-							lc.setMaxTime(e.getTimeStamp());
-							eventHistoryLock.lock();
-							eventHistory.add(e);
-							eventHistoryLock.unlock();
-							dec.writeObjectToStream(new Acknowledge(e));
-							mapLock.lock();
-							acknowledgements.put(e.getTimeStamp(), true);
-							mapLock.unlock();
-						} else if (o instanceof Acknowledge){
-							Acknowledge a = (Acknowledge) o;
-							mapLock.lock();
-							acknowledgements.put(a.getEvent().getTimeStamp(), true);
-							mapLock.unlock(); 
-						} else if (o instanceof CaretUpdate) {
-							CaretUpdate cu = (CaretUpdate) o;
-							carets.put(cu.getID(), cu.getPos());
-						}
-					}
-					if(!client.isClosed()) {
-						dec.writeObjectToStream(null);
-					}
-					client.close();
-				} catch (IOException | ClassNotFoundException e) {
-					if(!editor.getActive()) {
-						editor.disconnect();
-					}
-					editor.setErrorMessage("Connection lost");
-				}
-				if(!editor.getActive()) {
-					editor.disconnect();
-					editor.setTitle("Disconnected");
-				} else {
-					editor.setTitleToListen();
-					editor.setDocumentFilter(null);
-				}
-			}
-
-		};
-		Thread queueThread = new Thread(streamToQueue);
-		queueThread.start();
-	}
+	
 	/* 
 	 * Will send null to the other peer if the connection is not closed.
 	 */
-	public void stopStreamToQueue() {
-		if(!client.isClosed()) {
-			dec.writeObjectToStream(null);
+	public synchronized void stopStreamToQueue() {
+		for(Peer p : dec.getPeers()) {
+			if (p.isConnected()) {
+				p.writeObjectToStream(null);
+			}
 		}
 		wasInterrupted = true;
 	}
 	
-	public void updateCaretPos(int id, int pos) {
+	public synchronized void updateCaretPos(int id, int pos) {
 		carets.put(id, pos);
 	}
 	
@@ -189,4 +133,10 @@ public class EventReplayer implements Runnable {
 		return dec;
 	}
 	
+	public synchronized void addAcknowledgement(TimeStamp ts, int id) {
+		if(!acknowledgements.containsKey(ts)) {
+			acknowledgements.put(ts, new HashSet<Integer>());
+		}
+		acknowledgements.get(ts).add(id);
+	}
 }

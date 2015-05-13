@@ -2,21 +2,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.locks.Lock;
 
 
-public class Peer extends Thread {
-
+public class Peer implements Runnable {
 	private int id;
-	private int caretPos;
 	private DistributedTextEditor editor;
 	private EventReplayer replayer;
 	private Socket client;
 	private LamportClock lc;
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
-	private PriorityBlockingQueue<TextEvent> eventHistory;
 
 	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc) {
 		this.editor = editor;
@@ -24,10 +19,6 @@ public class Peer extends Thread {
 		this.id = id;
 		client = c;
 		this.lc = lc;
-		caretPos = 0;
-
-		eventHistory = replayer.getEventHistory();
-		eventHistoryLock = replayer.getEventHistoryLock();
 
 		try {
 			output = new ObjectOutputStream(c.getOutputStream());
@@ -38,7 +29,7 @@ public class Peer extends Thread {
 	}
 
 	@Override
-	public void start() {
+	public void run() {
 		try {
 			Object o;
 			while((o = input.readObject()) != null) {
@@ -46,24 +37,24 @@ public class Peer extends Thread {
 					TextEvent e = (TextEvent) o;
 					lc.setMaxTime(e.getTimeStamp());
 					replayer.getEventHistoryLock().lock();
-					eventHistory.add(e);
+					replayer.getEventHistory().add(e);
 					replayer.getEventHistoryLock().unlock();
 					replayer.getDocumentEventCapturer().sendObjectToAllPeers(new Acknowledge(e));
 					replayer.getMapLock().lock();
-					acknowledgements.put(e.getTimeStamp(), true);
+					replayer.addAcknowledgement(e.getTimeStamp(), e.getTimeStamp().getID());
 					replayer.getMapLock().unlock();
 				} else if (o instanceof Acknowledge){
 					Acknowledge a = (Acknowledge) o;
-					mapLock.lock();
-					map.put(a.getEvent().getTimeStamp(), true);
-					mapLock.unlock(); 
+					replayer.getMapLock().lock();
+					replayer.addAcknowledgement(a.getEvent().getTimeStamp(), a.getID());
+					replayer.getMapLock().unlock(); 
 				} else if (o instanceof CaretUpdate) {
 					CaretUpdate cu = (CaretUpdate) o;
-					carets.put(cu.getID(), cu.getPos());
+					replayer.updateCaretPos(cu.getID(), cu.getPos());
 				}
 			}
 			if(!client.isClosed()) {
-				dec.writeObjectToStream(null);
+				writeObjectToStream(null);
 			}
 			client.close();
 		} catch (IOException | ClassNotFoundException e) {
@@ -90,8 +81,8 @@ public class Peer extends Thread {
 			e.printStackTrace();
 		}
 	}
-
+	
+	public boolean isConnected() {
+		return !client.isClosed();
+	}
 }
-
-
-
