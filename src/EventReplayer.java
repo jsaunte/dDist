@@ -65,21 +65,10 @@ public class EventReplayer implements Runnable {
 							TextEvent e = eventHistory.take();
 							int idOfSender = e.getTimeStamp().getID();
 							int pos = carets.get(idOfSender);
-							e.doEvent(editor, pos);				
+							e.doEvent(editor, pos);
 							
-							if(e instanceof TextInsertEvent) {
-								for(int i : carets.keySet()) {
-									if(carets.get(i) >= pos) {
-										updateCaretPos(i, carets.get(i) + e.getLength());
-									}
-								}
-							} else if (e instanceof TextRemoveEvent) {
-								for(int i : carets.keySet()) {
-									if(carets.get(i) >= pos) {
-										updateCaretPos(i, carets.get(i) - e.getLength());
-									}
-								}
-							}
+							updateAllCarets(e, pos);
+							
 							eventHistoryLock.unlock();
 							
 						} catch (InterruptedException e1) {
@@ -111,6 +100,22 @@ public class EventReplayer implements Runnable {
 	
 	public synchronized void updateCaretPos(int id, int pos) {
 		carets.put(id, pos);
+	}
+	
+	public synchronized void updateAllCarets(TextEvent e, int pos) {
+		if(e instanceof TextInsertEvent) {
+			for(int i : carets.keySet()) {
+				if(carets.get(i) >= pos) {
+					carets.put(i, carets.get(i) + e.getLength());
+				}
+			}
+		} else if (e instanceof TextRemoveEvent) {
+			for(int i : carets.keySet()) {
+				if(carets.get(i) >= pos) {
+					carets.put(i, carets.get(i) - e.getLength());
+				}
+			}
+		}
 	}
 	
 	public PriorityBlockingQueue<TextEvent> getEventHistory() {
