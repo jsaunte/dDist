@@ -18,8 +18,8 @@ public class DistributedTextEditor extends JFrame {
 
 	private JTextArea area1 = new JTextArea(20,120);
 	private JTextArea area2 = new JTextArea(20,120);     
-	private JTextField ipaddress = new JTextField("IP address here");     
-	private JTextField portNumber = new JTextField("Port number here");     
+	private JTextField ipaddress = new JTextField("localhost");     
+	private JTextField portNumber = new JTextField("4242");     
 
 	private EventReplayer er;
 	private Thread ert; 
@@ -92,10 +92,10 @@ public class DistributedTextEditor extends JFrame {
 		setTitle("Disconnected");
 		setVisible(true);
 		area1.insert("Welcome to Hjortehandlerne's distributed text editor. \n", 0);
-		
+
 		this.addWindowListener(w1);
 	}
-	
+
 	private WindowListener w1 = new WindowListener() {
 		/**
 		 * Kill all active threads
@@ -118,14 +118,14 @@ public class DistributedTextEditor extends JFrame {
 		@Override
 		public void windowOpened(WindowEvent e) {}	
 	};
-	
+
 	private KeyListener k1 = new KeyAdapter() {
 		public void keyPressed(KeyEvent e) {
 			changed = true;
 			Save.setEnabled(true);
 			SaveAs.setEnabled(true);
 		}
-		
+
 		/**
 		 * The keyReleased event ensures that the caret-position is updated for both peers, when the user moves the caret with the arrow-keys.
 		 */		
@@ -141,7 +141,7 @@ public class DistributedTextEditor extends JFrame {
 			}
 		}
 	};
-	
+
 	/**
 	 * This mouselistener ensures that both peers have an updated caret-position for this user, when he moves his caret by a mouseclick.
 	 */
@@ -154,7 +154,7 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 
-	
+
 	/*
 	 * This action is called when the Listen-button is fired. 
 	 * It creates a serversocket, and awaits a connection.
@@ -172,25 +172,23 @@ public class DistributedTextEditor extends JFrame {
 				Runnable server = new Runnable() {
 					public void run() {
 						registerOnPort();
-						editor.setTitleToListen();
-						while(active) {							
-							clientSocket = waitForConnectionFromClient();
-							lc = new LamportClock(1);
-							area1.setText("");
-							resetArea2();
-							if (clientSocket != null) {
-								setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
-								connected = true;
-								dec = new DocumentEventCapturer(lc);
-								setDocumentFilter(dec);
-								er = new EventReplayer(editor, dec, lc); 
-								ert = new Thread(er);
-								ert.start();
-								Peer peer = new Peer(editor, er, 2, clientSocket, lc);
-								dec.getPeers().add(peer);
-								Thread t = new Thread(peer);
-								t.start();
-							}
+						editor.setTitleToListen();						
+						clientSocket = waitForConnectionFromClient();
+						lc = new LamportClock(1);
+						area1.setText("");
+						resetArea2();
+						if (clientSocket != null) {
+							setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
+							connected = true;
+							dec = new DocumentEventCapturer(lc);
+							setDocumentFilter(dec);
+							er = new EventReplayer(editor, dec, lc); 
+							ert = new Thread(er);
+							ert.start();
+							Peer peer = new Peer(editor, er, 2, clientSocket, lc);
+							dec.getPeers().add(peer);
+							Thread t = new Thread(peer);
+							t.start();
 						}
 					}
 				};
@@ -208,6 +206,20 @@ public class DistributedTextEditor extends JFrame {
 			SaveAs.setEnabled(false);
 		}
 	};
+	
+	private void waitForConnection() {
+		while(active) {
+			Socket client = waitForConnectionFromClient();
+			if(client != null) {
+				dec.sendObjectToAllPeers("lock");
+				int id = dec.getNextId();
+				Peer p = new Peer(editor, er, id, client, lc);
+				p.writeObjectToStream("id: " + id);
+				p.writeObjectToStream(dec.getPeers());
+				dec.addPeer(p);
+			}
+		}
+	}
 
 	/**
 	 *
@@ -224,7 +236,7 @@ public class DistributedTextEditor extends JFrame {
 			System.exit(-1);			
 		}
 	}
-	
+
 	/**
 	 * Closes the serversocket
 	 */
@@ -382,19 +394,19 @@ public class DistributedTextEditor extends JFrame {
 	public DocumentFilter getDocumentFilter() {
 		return dec;
 	}
-	
+
 	public JTextArea getTextArea() {
 		return area1;
 	}
-	
+
 	public void setDocumentFilter(DocumentFilter filter) {
 		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
 	}
-	
+
 	public void setErrorMessage(String s) {
 		area2.setText("Error: " + s);
 	}
-	
+
 	public void setTitleToListen() {
 		InetAddress local;
 		try {
@@ -405,7 +417,7 @@ public class DistributedTextEditor extends JFrame {
 		}
 
 	}
-	
+
 	public void resetArea2() {
 		area2.setText("");
 	}

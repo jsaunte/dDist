@@ -85,4 +85,8 @@ public class Peer implements Runnable {
 	public boolean isConnected() {
 		return !client.isClosed();
 	}
+	
+	public int getId() {
+		return id;
+	}
 }

@@ -110,4 +110,14 @@ public class DocumentEventCapturer extends DocumentFilter {
 	public synchronized void addPeer(Peer p) {
 		peers.add(p);
 	}
+
+	public int getNextId() {
+		int nextid = 2;
+		for(Peer p : peers) {
+			if(p.getId() >= nextid) {
+				nextid = p.getId() + 1;
+			}
+		}
+		return nextid;
+	}
 }
