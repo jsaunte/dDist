@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Random;
 
 import javax.swing.*;
 import javax.swing.text.*;
@@ -31,6 +32,7 @@ public class DistributedTextEditor extends JFrame {
 	private boolean changed = false;
 	private boolean connected = false;
 	private boolean active = false;
+	private boolean locked = false;
 	private DocumentEventCapturer dec;
 	private ServerSocket serverSocket;
 	private Socket clientSocket;
@@ -211,12 +213,37 @@ public class DistributedTextEditor extends JFrame {
 		while(active) {
 			Socket client = waitForConnectionFromClient();
 			if(client != null) {
-				dec.sendObjectToAllPeers("lock");
-				int id = dec.getNextId();
-				Peer p = new Peer(editor, er, id, client, lc);
-				p.writeObjectToStream("id: " + id);
-				p.writeObjectToStream(dec.getPeers());
-				dec.addPeer(p);
+				ObjectInputStream input;
+				try {
+					input = new ObjectInputStream(client.getInputStream());
+					Object o = input.readObject();
+					input.close();
+					if(o instanceof JoinNetworkRequest) {
+						dec.sendObjectToAllPeers(new LockRequest(lc.getTimeStamp()));
+						waitForAllToLock();
+						locked = true;
+						int id = dec.getNextId();
+						Peer p = new Peer(editor, er, id, client, lc);
+						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers());
+						p.writeObjectToStream(cd);
+						dec.addPeer(p);
+					}
+				} catch (IOException | ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	private void waitForAllToLock() {
+		int counter = 0;
+		for(Peer p : dec.getPeers()) {
+			while(!p.isLocked() && p.isConnected()) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+				}
 			}
 		}
 	}
@@ -280,18 +307,45 @@ public class DistributedTextEditor extends JFrame {
 			resetArea2();
 			try {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
+				Random r = new Random();
+				int serverport = 10000 + r.nextInt(89999); // random port :D
+				
+				serverSocket = new ServerSocket(serverport);
+				
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
-				lc = new LamportClock(2);
+				
+				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+				output.writeObject(new JoinNetworkRequest(serverport));
+				output.close();
+				
+				ConnectionData data = getConnectionData(clientSocket);
+				
+				lc = new LamportClock(data.getId());
+				lc.setMaxTime(data.getTs());
 				dec = new DocumentEventCapturer(lc);
 				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
 				er = new EventReplayer(editor, dec, lc);
 				ert = new Thread(er);
 				ert.start();
-				Peer peer = new Peer(editor, er, 2, clientSocket, lc);
+				Peer peer = new Peer(editor, er, data.getHostId(), clientSocket, lc);
 				dec.getPeers().add(peer);
-				Thread t = new Thread(peer);
-				t.start();
+				
+				er.setAcknowledgements(data.getAcknowledgements());
+				er.setEventHistory(data.getEventHistory());
+				er.setCarets(data.getCarets());
+				er.getCarets().put(lc.getID(), 0);
+				area1.setText(data.getTextField());
+				
+				
+				for(Peer p : dec.getPeers()) {
+					// TODO : Add ip og port til peer
+					// TODO : Opret nye peers ud fra den information
+					Thread t = new Thread(p);
+					t.start();
+				}
+				
+				
 				changed = false;
 				Connect.setEnabled(false);
 				Disconnect.setEnabled(true);
@@ -301,6 +355,22 @@ public class DistributedTextEditor extends JFrame {
 			} catch (NumberFormatException | IOException e1) {
 				setTitle("Unable to connect");
 			}
+		}
+
+		private ConnectionData getConnectionData(Socket clientSocket) {
+			ObjectInputStream input;
+			ConnectionData res;
+			try {
+				input = new ObjectInputStream(clientSocket.getInputStream());
+				Object o = input.readObject();
+				res = (ConnectionData) o;
+				input.close();
+				return res;
+			} catch (IOException | ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return null;
 		}
 	};
 
@@ -398,6 +468,10 @@ public class DistributedTextEditor extends JFrame {
 	public JTextArea getTextArea() {
 		return area1;
 	}
+	
+	public DocumentEventCapturer getDocumentEventCapturer() {
+		return dec;
+	}
 
 	public void setDocumentFilter(DocumentFilter filter) {
 		((AbstractDocument)area1.getDocument()).setDocumentFilter(filter);
@@ -424,5 +498,9 @@ public class DistributedTextEditor extends JFrame {
 
 	public static void main(String[] arg) {
 		editor = new DistributedTextEditor();
+	}
+
+	public void setLocked(boolean b) {
+		locked = b;
 	}
 }

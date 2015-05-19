@@ -12,6 +12,7 @@ public class Peer implements Runnable {
 	private LamportClock lc;
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
+	private boolean locked;
 
 	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc) {
 		this.editor = editor;
@@ -19,7 +20,7 @@ public class Peer implements Runnable {
 		this.id = id;
 		client = c;
 		this.lc = lc;
-
+		locked = false;
 		try {
 			output = new ObjectOutputStream(c.getOutputStream());
 			input = new ObjectInputStream(c.getInputStream());
@@ -51,6 +52,13 @@ public class Peer implements Runnable {
 				} else if (o instanceof CaretUpdate) {
 					CaretUpdate cu = (CaretUpdate) o;
 					replayer.updateCaretPos(cu.getID(), cu.getPos());
+				} else if (o instanceof LockRequest) {
+					editor.setLocked(true);
+					writeObjectToStream(new LockAcknowledge(lc.getTimeStamp()));
+				} else if (o instanceof UnlockRequest) {
+					
+				} else if (o instanceof LockAcknowledge) {
+					locked = true;
 				}
 			}
 			if(!client.isClosed()) {
@@ -88,5 +96,9 @@ public class Peer implements Runnable {
 	
 	public int getId() {
 		return id;
+	}
+	
+	public boolean isLocked() {
+		return locked;
 	}
 }

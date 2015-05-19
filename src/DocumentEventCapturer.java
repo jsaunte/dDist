@@ -33,6 +33,8 @@ public class DocumentEventCapturer extends DocumentFilter {
 	 * are new elements.
 	 */
 	protected PriorityBlockingQueue<TextEvent> eventHistory = new PriorityBlockingQueue<TextEvent>();
+	
+
 	private ArrayList<Peer> peers;
 	private LamportClock lc;
 	private Lock eventHistoryLock;
@@ -119,5 +121,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 			}
 		}
 		return nextid;
+	}
+	
+	public void setPeers(ArrayList<Peer> peers) {
+		this.peers = peers;
 	}
 }

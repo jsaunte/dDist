@@ -20,6 +20,8 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class EventReplayer implements Runnable {
 
+	
+
 	private DocumentEventCapturer dec;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
@@ -143,5 +145,25 @@ public class EventReplayer implements Runnable {
 			acknowledgements.put(ts, new HashSet<Integer>());
 		}
 		acknowledgements.get(ts).add(id);
+	}
+	public HashMap<TimeStamp, Set<Integer>> getAcknowledgements() {
+		return acknowledgements;
+	}
+
+	public HashMap<Integer, Integer> getCarets() {
+		return carets;
+	}
+
+	public void setEventHistory(PriorityBlockingQueue<TextEvent> eventHistory) {
+		this.eventHistory = eventHistory;
+	}
+
+	public void setAcknowledgements(
+			HashMap<TimeStamp, Set<Integer>> acknowledgements) {
+		this.acknowledgements = acknowledgements;
+	}
+
+	public void setCarets(HashMap<Integer, Integer> carets) {
+		this.carets = carets;
 	}
 }
