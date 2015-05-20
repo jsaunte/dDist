@@ -12,15 +12,20 @@ public class Peer implements Runnable {
 	private LamportClock lc;
 	private ObjectOutputStream output;
 	private ObjectInputStream input;
+	private String ip;
+	private int port;
 	private boolean locked;
 
-	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc) {
+	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc, String ip, int port) {
 		this.editor = editor;
 		this.replayer = replayer;
 		this.id = id;
 		client = c;
 		this.lc = lc;
 		locked = false;
+		this.ip = ip;
+		this.port = port;
+		// TODO : Fucked vores sockets op så intet virker. YAY
 		try {
 			output = new ObjectOutputStream(c.getOutputStream());
 			input = new ObjectInputStream(c.getInputStream());
@@ -100,5 +105,13 @@ public class Peer implements Runnable {
 	
 	public boolean isLocked() {
 		return locked;
+	}
+	
+	public String getIP() {
+		return ip;
+	}
+
+	public int getPort() {
+		return port;
 	}
 }

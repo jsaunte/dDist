@@ -187,11 +187,20 @@ public class DistributedTextEditor extends JFrame {
 							er = new EventReplayer(editor, dec, lc); 
 							ert = new Thread(er);
 							ert.start();
-							Peer peer = new Peer(editor, er, 2, clientSocket, lc);
-							dec.getPeers().add(peer);
-							Thread t = new Thread(peer);
-							t.start();
+							ObjectInputStream input;
+							try {
+								input = new ObjectInputStream(clientSocket.getInputStream());
+								JoinNetworkRequest request = (JoinNetworkRequest) input.readObject();
+								input.close();
+								Peer peer = new Peer(editor, er, 2, clientSocket, lc, clientSocket.getInetAddress().getHostAddress(), request.getPort());
+								dec.getPeers().add(peer);
+								Thread t = new Thread(peer);
+								t.start();
+							} catch (IOException | ClassNotFoundException e) {
+								e.printStackTrace();
+							}
 						}
+						waitForConnection();
 					}
 				};
 				Thread serverThread = new Thread(server);
@@ -213,20 +222,28 @@ public class DistributedTextEditor extends JFrame {
 		while(active) {
 			Socket client = waitForConnectionFromClient();
 			if(client != null) {
-				ObjectInputStream input;
 				try {
-					input = new ObjectInputStream(client.getInputStream());
+					ObjectInputStream input = new ObjectInputStream(client.getInputStream());
 					Object o = input.readObject();
 					input.close();
 					if(o instanceof JoinNetworkRequest) {
+						JoinNetworkRequest request = (JoinNetworkRequest) o;
 						dec.sendObjectToAllPeers(new LockRequest(lc.getTimeStamp()));
 						waitForAllToLock();
 						locked = true;
 						int id = dec.getNextId();
-						Peer p = new Peer(editor, er, id, client, lc);
-						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers());
+						Peer p = new Peer(editor, er, id, client, lc, client.getInetAddress().getHostAddress(), request.getPort());
+						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
 						p.writeObjectToStream(cd);
 						dec.addPeer(p);
+					} else if(o instanceof NewPeerDataRequest) {
+						NewPeerDataRequest request = (NewPeerDataRequest) o;
+						Peer newPeer = new Peer(editor, er, request.getId(), client, lc, client.getLocalAddress().getHostName(), request.getPort());
+						dec.addPeer(newPeer);
+						er.addCaretPos(request.getId(), request.getCaretPos());
+						newPeer.writeObjectToStream(new NewPeerDataAcknowledgement(lc.getTimeStamp()));
+						Thread t = new Thread(newPeer);
+						t.start();
 					}
 				} catch (IOException | ClassNotFoundException e) {
 					// TODO Auto-generated catch block
@@ -308,7 +325,7 @@ public class DistributedTextEditor extends JFrame {
 			try {
 				clientSocket = new Socket(ipaddress.getText(),Integer.parseInt(portNumber.getText()));
 				Random r = new Random();
-				int serverport = 10000 + r.nextInt(89999); // random port :D
+				int serverport = 10000 + r.nextInt(8999); // random port :D
 				
 				serverSocket = new ServerSocket(serverport);
 				
@@ -328,7 +345,7 @@ public class DistributedTextEditor extends JFrame {
 				er = new EventReplayer(editor, dec, lc);
 				ert = new Thread(er);
 				ert.start();
-				Peer peer = new Peer(editor, er, data.getHostId(), clientSocket, lc);
+				Peer peer = new Peer(editor, er, data.getHostId(), clientSocket, lc, clientSocket.getInetAddress().getHostAddress(), data.getPort());
 				dec.getPeers().add(peer);
 				
 				er.setAcknowledgements(data.getAcknowledgements());
@@ -338,13 +355,30 @@ public class DistributedTextEditor extends JFrame {
 				area1.setText(data.getTextField());
 				
 				
-				for(Peer p : dec.getPeers()) {
-					// TODO : Add ip og port til peer
-					// TODO : Opret nye peers ud fra den information
-					Thread t = new Thread(p);
+				for(Peer p : data.getPeers()) {
+					
+					Socket socket;
+					try {
+						socket = connectToPeer(p.getIP(), p.getPort());
+						ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
+						ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+						
+						// TODO : Note that caret pos is hardcoded to 0. Might give problem
+						outputStream.writeObject(new NewPeerDataRequest(lc.getID(), serverSocket.getLocalPort(), 0));
+						NewPeerDataAcknowledgement ack = (NewPeerDataAcknowledgement) input.readObject();
+						outputStream.close();
+						input.close();
+					} catch(IOException ex) {
+						continue;
+					}
+					Peer newPeer = new Peer(editor, er, p.getId(), socket, lc, p.getIP(), p.getPort());
+					
+					dec.getPeers().add(newPeer);
+					Thread t = new Thread(newPeer);
 					t.start();
 				}
 				
+				dec.sendObjectToAllPeers(new UnlockRequest(lc.getTimeStamp()));
 				
 				changed = false;
 				Connect.setEnabled(false);
@@ -352,9 +386,19 @@ public class DistributedTextEditor extends JFrame {
 				Listen.setEnabled(false);
 				Save.setEnabled(false);
 				SaveAs.setEnabled(false);
-			} catch (NumberFormatException | IOException e1) {
+			} catch (NumberFormatException | IOException | ClassNotFoundException e1) {
 				setTitle("Unable to connect");
 			}
+		}
+		
+		private Socket connectToPeer(String ip, int port) {
+			try {
+				Socket peer = new Socket(ip, port);
+				return peer;
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return null;
 		}
 
 		private ConnectionData getConnectionData(Socket clientSocket) {

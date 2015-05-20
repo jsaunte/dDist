@@ -163,7 +163,11 @@ public class EventReplayer implements Runnable {
 		this.acknowledgements = acknowledgements;
 	}
 
-	public void setCarets(HashMap<Integer, Integer> carets) {
+	public synchronized void setCarets(HashMap<Integer, Integer> carets) {
 		this.carets = carets;
+	}
+
+	public synchronized void addCaretPos(int id, int caretPos) {
+		carets.put(id, caretPos);
 	}
 }

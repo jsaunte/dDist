@@ -1,5 +1,7 @@
+import java.io.Serializable;
 
-public class LockAcknowledge {
+
+public class LockAcknowledge implements Serializable {
 	private TimeStamp ts;
 	
 	public LockAcknowledge(TimeStamp ts) {
