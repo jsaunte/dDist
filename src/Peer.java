@@ -1,10 +1,16 @@
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.Socket;
 
 
-public class Peer implements Runnable {
+public class Peer implements Runnable, Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3160849123787642705L;
 	private int id;
 	private DistributedTextEditor editor;
 	private EventReplayer replayer;
@@ -16,7 +22,7 @@ public class Peer implements Runnable {
 	private int port;
 	private boolean locked;
 
-	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, LamportClock lc, String ip, int port) {
+	public Peer(DistributedTextEditor editor, EventReplayer replayer, int id, Socket c, ObjectOutputStream output, ObjectInputStream input, LamportClock lc, String ip, int port) {
 		this.editor = editor;
 		this.replayer = replayer;
 		this.id = id;
@@ -25,13 +31,8 @@ public class Peer implements Runnable {
 		locked = false;
 		this.ip = ip;
 		this.port = port;
-		// TODO : Fucked vores sockets op så intet virker. YAY
-		try {
-			output = new ObjectOutputStream(c.getOutputStream());
-			input = new ObjectInputStream(c.getInputStream());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		this.output = output;
+		this.input = input;
 	}
 
 	@Override
@@ -45,6 +46,7 @@ public class Peer implements Runnable {
 					replayer.getEventHistoryLock().lock();
 					replayer.getEventHistory().add(e);
 					replayer.getEventHistoryLock().unlock();
+//					System.out.println("Før ack sendes");
 					replayer.getDocumentEventCapturer().sendObjectToAllPeers(new Acknowledge(e));
 					replayer.getMapLock().lock();
 					replayer.addAcknowledgement(e.getTimeStamp(), e.getTimeStamp().getID());
@@ -52,8 +54,16 @@ public class Peer implements Runnable {
 				} else if (o instanceof Acknowledge){
 					Acknowledge a = (Acknowledge) o;
 					replayer.getMapLock().lock();
-					replayer.addAcknowledgement(a.getEvent().getTimeStamp(), a.getID());
-					replayer.getMapLock().unlock(); 
+					replayer.addAcknowledgement(a.getEvent().getTimeStamp(), id);
+					replayer.getMapLock().unlock();
+//					if (editor.getListen()) {
+//						System.out.println("Acks");
+//						for(TimeStamp t : replayer.getAcknowledgements().keySet()) {
+//							System.out.println(t.getTime());
+//						}
+//						System.out.println("Events");
+//						System.out.println(replayer.getEventHistory().size());
+//					}
 				} else if (o instanceof CaretUpdate) {
 					CaretUpdate cu = (CaretUpdate) o;
 					replayer.updateCaretPos(cu.getID(), cu.getPos());
@@ -61,7 +71,7 @@ public class Peer implements Runnable {
 					editor.setLocked(true);
 					writeObjectToStream(new LockAcknowledge(lc.getTimeStamp()));
 				} else if (o instanceof UnlockRequest) {
-					
+					editor.setLocked(false);
 				} else if (o instanceof LockAcknowledge) {
 					locked = true;
 				}
@@ -70,11 +80,14 @@ public class Peer implements Runnable {
 				writeObjectToStream(null);
 			}
 			client.close();
+		} catch (EOFException e) {
+			e.printStackTrace();
 		} catch (IOException | ClassNotFoundException e) {
 			if(!editor.getActive()) {
 				editor.disconnect();
 			}
 			editor.setErrorMessage("Connection lost");
+			e.printStackTrace();
 		}
 		if(!editor.getActive()) {
 			editor.disconnect();

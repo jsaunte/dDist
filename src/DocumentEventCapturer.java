@@ -38,10 +38,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private ArrayList<Peer> peers;
 	private LamportClock lc;
 	private Lock eventHistoryLock;
+	private Lock peerLock;
 
 	public DocumentEventCapturer(LamportClock lc) {
 		this.lc = lc;
 		eventHistoryLock = new ReentrantLock();
+		peerLock = new ReentrantLock();
 		peers = new ArrayList<Peer>();
 	}
 
@@ -110,7 +112,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 	}
 	
 	public synchronized void addPeer(Peer p) {
+		peerLock.lock();
 		peers.add(p);
+		peerLock.unlock();
 	}
 
 	public int getNextId() {
@@ -125,5 +129,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 	
 	public void setPeers(ArrayList<Peer> peers) {
 		this.peers = peers;
+	}
+	
+	public Lock getPeerLock() {
+		return peerLock;
 	}
 }

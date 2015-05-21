@@ -19,9 +19,6 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  */
 public class EventReplayer implements Runnable {
-
-	
-
 	private DocumentEventCapturer dec;
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
@@ -59,23 +56,35 @@ public class EventReplayer implements Runnable {
 				TextEvent head = eventHistory.peek();
 				TimeStamp match = null;
 				mapLock.lock();
-				for(TimeStamp t : acknowledgements.keySet()) {
-					if(head.getTimeStamp().equals(t)) {
-						try {
-							match = t;
-							eventHistoryLock.lock();
-							TextEvent e = eventHistory.take();
-							int idOfSender = e.getTimeStamp().getID();
-							int pos = carets.get(idOfSender);
-							e.doEvent(editor, pos);
-							
-							updateAllCarets(e, pos);
-							
-							eventHistoryLock.unlock();
-							
-						} catch (InterruptedException e1) {
-							e1.printStackTrace();
-						}
+				boolean isAck = true;
+				if(!acknowledgements.containsKey(head.getTimeStamp())) {
+					mapLock.unlock();
+					continue;
+				}
+				Set<Integer> set = acknowledgements.get(head.getTimeStamp());
+				dec.getPeerLock().lock();
+				for(Peer p : dec.getPeers()) {
+					if(!set.contains(p.getId())) {
+						isAck = false;
+						break;
+					}
+				}
+				dec.getPeerLock().unlock();
+				if(isAck)  {
+					try {
+						match = head.getTimeStamp();
+						eventHistoryLock.lock();
+						TextEvent e = eventHistory.take();
+						int idOfSender = e.getTimeStamp().getID();
+						int pos = carets.get(idOfSender);
+						e.doEvent(editor, pos);
+
+						updateAllCarets(e, pos);
+
+						eventHistoryLock.unlock();
+
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
 					}
 				}
 				if(match != null) {
@@ -155,7 +164,11 @@ public class EventReplayer implements Runnable {
 	}
 
 	public void setEventHistory(PriorityBlockingQueue<TextEvent> eventHistory) {
-		this.eventHistory = eventHistory;
+		eventHistoryLock.lock();
+		for(TextEvent e : eventHistory) {
+			this.eventHistory.put(e);
+		}
+		eventHistoryLock.unlock();
 	}
 
 	public void setAcknowledgements(

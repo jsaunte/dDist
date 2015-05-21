@@ -7,10 +7,14 @@ import java.util.concurrent.locks.Lock;
 
 
 public class ConnectionData implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 9010994792178486010L;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Set<Integer>> acknowledgements;
 	private HashMap<Integer, Integer> carets;
-	private ArrayList<Peer> peers;
+	private ArrayList<PeerWrapper> peers;
 	private int id, hostid, port;
 	private String textField;
 	private TimeStamp ts;
@@ -43,7 +47,7 @@ public class ConnectionData implements Serializable {
 		return hostid;
 	}
 	
-	public ArrayList<Peer> getPeers() {
+	public ArrayList<PeerWrapper> getPeers() {
 		return peers;
 	}
 	
@@ -60,8 +64,11 @@ public class ConnectionData implements Serializable {
 		this.textField = textField;
 		this.ts = ts;
 		this.hostid = hostid;
-		this.peers = peers;
 		this.port = port;
+		this.peers = new ArrayList<PeerWrapper>();
+		for(Peer p : peers) {
+			this.peers.add(new PeerWrapper(p.getId(), p.getPort(), p.getIP()));
+		}
 	}
 	
 }

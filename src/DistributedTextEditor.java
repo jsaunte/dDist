@@ -33,6 +33,7 @@ public class DistributedTextEditor extends JFrame {
 	private boolean connected = false;
 	private boolean active = false;
 	private boolean locked = false;
+	private boolean listen = false;
 	private DocumentEventCapturer dec;
 	private ServerSocket serverSocket;
 	private Socket clientSocket;
@@ -180,6 +181,7 @@ public class DistributedTextEditor extends JFrame {
 						area1.setText("");
 						resetArea2();
 						if (clientSocket != null) {
+							listen = true;
 							setTitle("Connection from: " + clientSocket.getInetAddress().getHostAddress());
 							connected = true;
 							dec = new DocumentEventCapturer(lc);
@@ -187,12 +189,14 @@ public class DistributedTextEditor extends JFrame {
 							er = new EventReplayer(editor, dec, lc); 
 							ert = new Thread(er);
 							ert.start();
-							ObjectInputStream input;
+							
 							try {
-								input = new ObjectInputStream(clientSocket.getInputStream());
+								ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+								ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
 								JoinNetworkRequest request = (JoinNetworkRequest) input.readObject();
-								input.close();
-								Peer peer = new Peer(editor, er, 2, clientSocket, lc, clientSocket.getInetAddress().getHostAddress(), request.getPort());
+								Peer peer = new Peer(editor, er, 2, clientSocket, output, input, lc, clientSocket.getInetAddress().getHostAddress(), request.getPort());
+								ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), 2, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
+								peer.writeObjectToStream(cd);
 								dec.getPeers().add(peer);
 								Thread t = new Thread(peer);
 								t.start();
@@ -223,22 +227,28 @@ public class DistributedTextEditor extends JFrame {
 			Socket client = waitForConnectionFromClient();
 			if(client != null) {
 				try {
+					ObjectOutputStream output = new ObjectOutputStream(client.getOutputStream());
+					output.flush();
 					ObjectInputStream input = new ObjectInputStream(client.getInputStream());
 					Object o = input.readObject();
-					input.close();
+					
 					if(o instanceof JoinNetworkRequest) {
 						JoinNetworkRequest request = (JoinNetworkRequest) o;
 						dec.sendObjectToAllPeers(new LockRequest(lc.getTimeStamp()));
 						waitForAllToLock();
 						locked = true;
 						int id = dec.getNextId();
-						Peer p = new Peer(editor, er, id, client, lc, client.getInetAddress().getHostAddress(), request.getPort());
+						Peer p = new Peer(editor, er, id, client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
 						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
 						p.writeObjectToStream(cd);
 						dec.addPeer(p);
+						Thread t = new Thread(p);
+						t.start();
+						er.addCaretPos(id, 0);
 					} else if(o instanceof NewPeerDataRequest) {
 						NewPeerDataRequest request = (NewPeerDataRequest) o;
-						Peer newPeer = new Peer(editor, er, request.getId(), client, lc, client.getLocalAddress().getHostName(), request.getPort());
+						
+						Peer newPeer = new Peer(editor, er, request.getId(), client, output, input, lc, client.getLocalAddress().getHostName(), request.getPort());
 						dec.addPeer(newPeer);
 						er.addCaretPos(request.getId(), request.getCaretPos());
 						newPeer.writeObjectToStream(new NewPeerDataAcknowledgement(lc.getTimeStamp()));
@@ -328,56 +338,75 @@ public class DistributedTextEditor extends JFrame {
 				int serverport = 10000 + r.nextInt(8999); // random port :D
 				
 				serverSocket = new ServerSocket(serverport);
+				active = true;
+				area2.insert("Listening on: " + InetAddress.getLocalHost() + ":" + serverport + "\n", 0);
 				
 				setTitle("Connected to " + ipaddress.getText() + ":" + portNumber.getText() + "...");
 				connected = true;
 				
 				ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
+				ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
 				output.writeObject(new JoinNetworkRequest(serverport));
-				output.close();
 				
-				ConnectionData data = getConnectionData(clientSocket);
+				ConnectionData data = getConnectionData(clientSocket, input);
 				
 				lc = new LamportClock(data.getId());
 				lc.setMaxTime(data.getTs());
+//				dec = new DocumentEventCapturer(lc);
+//				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
+//				er = new EventReplayer(editor, dec, lc);
+//				ert = new Thread(er);
+//				ert.start();
+				
 				dec = new DocumentEventCapturer(lc);
-				((AbstractDocument)area1.getDocument()).setDocumentFilter(dec);
-				er = new EventReplayer(editor, dec, lc);
+				
+				er = new EventReplayer(editor, dec, lc); 
 				ert = new Thread(er);
 				ert.start();
-				Peer peer = new Peer(editor, er, data.getHostId(), clientSocket, lc, clientSocket.getInetAddress().getHostAddress(), data.getPort());
+				
+				Peer peer = new Peer(editor, er, data.getHostId(), clientSocket, output, input, lc, clientSocket.getInetAddress().getHostAddress(), data.getPort());
 				dec.getPeers().add(peer);
+				Thread thread = new Thread(peer);
+				thread.start();
 				
 				er.setAcknowledgements(data.getAcknowledgements());
 				er.setEventHistory(data.getEventHistory());
 				er.setCarets(data.getCarets());
 				er.getCarets().put(lc.getID(), 0);
-				area1.setText(data.getTextField());
 				
 				
-				for(Peer p : data.getPeers()) {
-					
+				
+				for(PeerWrapper p : data.getPeers()) {
 					Socket socket;
 					try {
 						socket = connectToPeer(p.getIP(), p.getPort());
+//						System.out.println(p.getPort());
 						ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-						ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+						ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
 						
 						// TODO : Note that caret pos is hardcoded to 0. Might give problem
 						outputStream.writeObject(new NewPeerDataRequest(lc.getID(), serverSocket.getLocalPort(), 0));
-						NewPeerDataAcknowledgement ack = (NewPeerDataAcknowledgement) input.readObject();
-						outputStream.close();
-						input.close();
+//						NewPeerDataAcknowledgement ack = (NewPeerDataAcknowledgement) input.readObject();
+						Peer newPeer = new Peer(editor, er, p.getId(), socket, outputStream, inputStream, lc, p.getIP(), p.getPort());
+						
+						dec.getPeers().add(newPeer);
+						Thread t = new Thread(newPeer);
+						t.start();
 					} catch(IOException ex) {
 						continue;
 					}
-					Peer newPeer = new Peer(editor, er, p.getId(), socket, lc, p.getIP(), p.getPort());
-					
-					dec.getPeers().add(newPeer);
-					Thread t = new Thread(newPeer);
-					t.start();
 				}
-				
+				Thread t1 = new Thread(new Runnable() {
+					
+					@Override
+					public void run() {
+						waitForConnection();						
+					}
+				});
+				t1.start();
+				area1.setText(data.getTextField());
+				area1.setCaretPosition(0);
+				setDocumentFilter(dec);
 				dec.sendObjectToAllPeers(new UnlockRequest(lc.getTimeStamp()));
 				
 				changed = false;
@@ -386,7 +415,7 @@ public class DistributedTextEditor extends JFrame {
 				Listen.setEnabled(false);
 				Save.setEnabled(false);
 				SaveAs.setEnabled(false);
-			} catch (NumberFormatException | IOException | ClassNotFoundException e1) {
+			} catch (NumberFormatException | IOException  e1) {
 				setTitle("Unable to connect");
 			}
 		}
@@ -401,14 +430,11 @@ public class DistributedTextEditor extends JFrame {
 			return null;
 		}
 
-		private ConnectionData getConnectionData(Socket clientSocket) {
-			ObjectInputStream input;
+		private ConnectionData getConnectionData(Socket clientSocket, ObjectInputStream input) {
 			ConnectionData res;
 			try {
-				input = new ObjectInputStream(clientSocket.getInputStream());
 				Object o = input.readObject();
 				res = (ConnectionData) o;
-				input.close();
 				return res;
 			} catch (IOException | ClassNotFoundException e) {
 				// TODO Auto-generated catch block
@@ -546,5 +572,9 @@ public class DistributedTextEditor extends JFrame {
 
 	public void setLocked(boolean b) {
 		locked = b;
+	}
+	
+	public boolean getListen() {
+		return listen;
 	}
 }
