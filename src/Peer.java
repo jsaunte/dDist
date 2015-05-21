@@ -76,12 +76,16 @@ public class Peer implements Runnable, Serializable {
 					locked = true;
 				}
 			}
+			replayer.removePeer(this);
+			
 			if(!client.isClosed()) {
 				writeObjectToStream(null);
 			}
+			output.close();
+			input.close();
 			client.close();
 		} catch (EOFException e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 		} catch (IOException | ClassNotFoundException e) {
 			if(!editor.getActive()) {
 				editor.disconnect();
@@ -92,10 +96,11 @@ public class Peer implements Runnable, Serializable {
 		if(!editor.getActive()) {
 			editor.disconnect();
 			editor.setTitle("Disconnected");
-		} else {
-			editor.setTitleToListen();
-			editor.setDocumentFilter(null);
-		}
+		} 
+//			else {
+//			editor.setTitleToListen();
+//			editor.setDocumentFilter(null);
+//		}
 	}
 	
 	public synchronized void writeObjectToStream(Object o) {

@@ -23,7 +23,7 @@ public class EventReplayer implements Runnable {
 	private DistributedTextEditor editor;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Set<Integer>> acknowledgements;
-	private Lock mapLock, eventHistoryLock;
+	private Lock ackLock, eventHistoryLock, caretLock;
 	private LamportClock lc;
 	private HashMap<Integer, Integer> carets;
 	private boolean wasInterrupted = false;
@@ -42,7 +42,8 @@ public class EventReplayer implements Runnable {
 		carets = new HashMap<Integer, Integer>();
 		carets.put(1, 0);
 		carets.put(2, 0);
-		mapLock = new ReentrantLock();
+		ackLock = new ReentrantLock();
+		caretLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
 	}
 	
@@ -55,10 +56,10 @@ public class EventReplayer implements Runnable {
 			if(!eventHistory.isEmpty()) {
 				TextEvent head = eventHistory.peek();
 				TimeStamp match = null;
-				mapLock.lock();
+				ackLock.lock();
 				boolean isAck = true;
-				if(!acknowledgements.containsKey(head.getTimeStamp())) {
-					mapLock.unlock();
+				if(!acknowledgements.containsKey(head.getTimeStamp()) && !dec.getPeers().isEmpty()) {
+					ackLock.unlock();
 					continue;
 				}
 				Set<Integer> set = acknowledgements.get(head.getTimeStamp());
@@ -90,7 +91,7 @@ public class EventReplayer implements Runnable {
 				if(match != null) {
 					acknowledgements.remove(match);
 				}
-				mapLock.unlock();
+				ackLock.unlock();
 			}		
 		}
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
@@ -100,20 +101,25 @@ public class EventReplayer implements Runnable {
 	/* 
 	 * Will send null to the other peer if the connection is not closed.
 	 */
-	public synchronized void stopStreamToQueue() {
+	public void stopStreamToQueue() {
+		dec.getPeerLock().lock();
 		for(Peer p : dec.getPeers()) {
 			if (p.isConnected()) {
 				p.writeObjectToStream(null);
 			}
 		}
+		dec.getPeerLock().unlock();
 		wasInterrupted = true;
 	}
 	
-	public synchronized void updateCaretPos(int id, int pos) {
+	public void updateCaretPos(int id, int pos) {
+		caretLock.lock();
 		carets.put(id, pos);
+		caretLock.unlock();
 	}
 	
-	public synchronized void updateAllCarets(TextEvent e, int pos) {
+	public void updateAllCarets(TextEvent e, int pos) {
+		caretLock.lock();
 		if(e instanceof TextInsertEvent) {
 			for(int i : carets.keySet()) {
 				if(carets.get(i) >= pos) {
@@ -127,6 +133,7 @@ public class EventReplayer implements Runnable {
 				}
 			}
 		}
+		caretLock.unlock();
 	}
 	
 	public PriorityBlockingQueue<TextEvent> getEventHistory() {
@@ -134,7 +141,7 @@ public class EventReplayer implements Runnable {
 	}
 
 	public Lock getMapLock() {
-		return mapLock;
+		return ackLock;
 	}
 
 	public Lock getEventHistoryLock() {
@@ -149,11 +156,13 @@ public class EventReplayer implements Runnable {
 		return dec;
 	}
 	
-	public synchronized void addAcknowledgement(TimeStamp ts, int id) {
+	public void addAcknowledgement(TimeStamp ts, int id) {
+		ackLock.lock();
 		if(!acknowledgements.containsKey(ts)) {
 			acknowledgements.put(ts, new HashSet<Integer>());
 		}
 		acknowledgements.get(ts).add(id);
+		ackLock.unlock();
 	}
 	public HashMap<TimeStamp, Set<Integer>> getAcknowledgements() {
 		return acknowledgements;
@@ -173,14 +182,36 @@ public class EventReplayer implements Runnable {
 
 	public void setAcknowledgements(
 			HashMap<TimeStamp, Set<Integer>> acknowledgements) {
+		ackLock.lock();
 		this.acknowledgements = acknowledgements;
+		ackLock.unlock();
 	}
 
-	public synchronized void setCarets(HashMap<Integer, Integer> carets) {
+	public void setCarets(HashMap<Integer, Integer> carets) {
+		caretLock.lock();
 		this.carets = carets;
+		caretLock.unlock();
 	}
 
-	public synchronized void addCaretPos(int id, int caretPos) {
+	public void addCaretPos(int id, int caretPos) {
+		caretLock.lock();
 		carets.put(id, caretPos);
+		caretLock.unlock();
+	}
+
+	public void removePeer(Peer peer) {
+		dec.getPeerLock().lock();
+		dec.getPeers().remove(peer);
+		dec.updateConnectionStatusArea();
+		dec.getPeerLock().unlock();
+	
+		caretLock.lock();
+		carets.remove(peer.getId());
+		caretLock.unlock();
+		
+	}
+	
+	public Lock getCaretLock() {
+		return caretLock;
 	}
 }

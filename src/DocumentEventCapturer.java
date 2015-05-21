@@ -39,8 +39,10 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private LamportClock lc;
 	private Lock eventHistoryLock;
 	private Lock peerLock;
+	private DistributedTextEditor editor;
 
-	public DocumentEventCapturer(LamportClock lc) {
+	public DocumentEventCapturer(LamportClock lc, DistributedTextEditor editor) {
+		this.editor = editor;
 		this.lc = lc;
 		eventHistoryLock = new ReentrantLock();
 		peerLock = new ReentrantLock();
@@ -107,14 +109,23 @@ public class DocumentEventCapturer extends DocumentFilter {
 		}
 	}
 	
-	public synchronized ArrayList<Peer> getPeers() {
+	public ArrayList<Peer> getPeers() {
 		return peers;
 	}
 	
-	public synchronized void addPeer(Peer p) {
+	public void addPeer(Peer p) {
 		peerLock.lock();
 		peers.add(p);
+		updateConnectionStatusArea();
 		peerLock.unlock();
+	}
+	
+	public void updateConnectionStatusArea() {
+		String res = "";
+		for(Peer peer : peers) {
+			res += "Connected to: " + peer.getIP() + " who is listening on port: " + peer.getPort() + " with ID: " + peer.getId() + "\n";
+		}
+		editor.setTextInArea2(res);
 	}
 
 	public int getNextId() {
