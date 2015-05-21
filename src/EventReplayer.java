@@ -1,7 +1,3 @@
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,6 +23,7 @@ public class EventReplayer implements Runnable {
 	private LamportClock lc;
 	private HashMap<Integer, Integer> carets;
 	private boolean wasInterrupted = false;
+	private int maxIdSoFar;
 	
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
@@ -40,8 +37,6 @@ public class EventReplayer implements Runnable {
 		eventHistory = dec.eventHistory;
 		acknowledgements = new HashMap<TimeStamp, Set<Integer>>();
 		carets = new HashMap<Integer, Integer>();
-		carets.put(1, 0);
-		carets.put(2, 0);
 		ackLock = new ReentrantLock();
 		caretLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
@@ -208,7 +203,6 @@ public class EventReplayer implements Runnable {
 		caretLock.lock();
 		carets.remove(peer.getId());
 		caretLock.unlock();
-		
 	}
 	
 	public Lock getCaretLock() {

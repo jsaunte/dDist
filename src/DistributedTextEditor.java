@@ -186,8 +186,10 @@ public class DistributedTextEditor extends JFrame {
 							listen = true;
 							connected = true;
 							dec = new DocumentEventCapturer(lc, editor);
+							dec.setMaxIdSoFar(1);
 							setDocumentFilter(dec);
-							er = new EventReplayer(editor, dec, lc); 
+							er = new EventReplayer(editor, dec, lc);
+							er.updateCaretPos(1, 0);
 							ert = new Thread(er);
 							ert.start();
 							
@@ -195,9 +197,11 @@ public class DistributedTextEditor extends JFrame {
 								ObjectOutputStream output = new ObjectOutputStream(clientSocket.getOutputStream());
 								ObjectInputStream input = new ObjectInputStream(clientSocket.getInputStream());
 								JoinNetworkRequest request = (JoinNetworkRequest) input.readObject();
-								Peer peer = new Peer(editor, er, 2, clientSocket, output, input, lc, clientSocket.getInetAddress().getHostAddress(), request.getPort());
-								ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), 2, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
+								int id = dec.getNextId();
+								Peer peer = new Peer(editor, er, id, clientSocket, output, input, lc, clientSocket.getInetAddress().getHostAddress(), request.getPort());
+								ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
 								dec.addPeer(peer);
+								er.addCaretPos(2, 0);
 								Thread t = new Thread(peer);
 								t.start();
 								peer.writeObjectToStream(cd);
@@ -238,6 +242,7 @@ public class DistributedTextEditor extends JFrame {
 						waitForAllToLock();
 						locked = true;
 						int id = dec.getNextId();
+						System.out.println(client.getInetAddress().getHostAddress());
 						Peer p = new Peer(editor, er, id, client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
 						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
 						p.writeObjectToStream(cd);
@@ -250,6 +255,7 @@ public class DistributedTextEditor extends JFrame {
 						
 						Peer newPeer = new Peer(editor, er, request.getId(), client, output, input, lc, client.getLocalAddress().getHostName(), request.getPort());
 						dec.addPeer(newPeer);
+						dec.setMaxIdSoFar(request.getId());
 						er.addCaretPos(request.getId(), request.getCaretPos());
 						newPeer.writeObjectToStream(new NewPeerDataAcknowledgement(lc.getTimeStamp()));
 						Thread t = new Thread(newPeer);
@@ -351,6 +357,7 @@ public class DistributedTextEditor extends JFrame {
 				lc = new LamportClock(data.getId());
 				lc.setMaxTime(data.getTs());				
 				dec = new DocumentEventCapturer(lc, editor);
+				dec.setMaxIdSoFar(data.getId());
 				er = new EventReplayer(editor, dec, lc); 
 				ert = new Thread(er);
 				ert.start();
@@ -363,9 +370,13 @@ public class DistributedTextEditor extends JFrame {
 				er.setAcknowledgements(data.getAcknowledgements());
 				er.setEventHistory(data.getEventHistory());
 				er.setCarets(data.getCarets());
+				
 				er.getCarets().put(lc.getID(), 0);
 				
-				
+				System.out.println("From data");
+				for(PeerWrapper pw : data.getPeers()) {
+					System.out.println("IP: " + pw.getIP() + "; port: " + pw.getPort() + "; id: " + pw.getId());
+				}
 				
 				for(PeerWrapper p : data.getPeers()) {
 					Socket socket;
@@ -385,6 +396,14 @@ public class DistributedTextEditor extends JFrame {
 						continue;
 					}
 				}
+				
+				System.out.println("Our new peers");
+				dec.getPeerLock().lock();
+				for(Peer p : dec.getPeers()) {
+					System.out.println("IP: " + p.getIP() + "; port: " + p.getPort() + "; id: " + p.getId());
+				}
+				dec.getPeerLock().unlock();
+				
 				Thread t1 = new Thread(new Runnable() {
 					
 					@Override

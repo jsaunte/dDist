@@ -40,13 +40,15 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private Lock eventHistoryLock;
 	private Lock peerLock;
 	private DistributedTextEditor editor;
-
+	private int maxIdSoFar;
+	
 	public DocumentEventCapturer(LamportClock lc, DistributedTextEditor editor) {
 		this.editor = editor;
 		this.lc = lc;
 		eventHistoryLock = new ReentrantLock();
 		peerLock = new ReentrantLock();
 		peers = new ArrayList<Peer>();
+		maxIdSoFar = 1;
 	}
 
 	/**
@@ -129,13 +131,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 	}
 
 	public int getNextId() {
-		int nextid = 2;
-		for(Peer p : peers) {
-			if(p.getId() >= nextid) {
-				nextid = p.getId() + 1;
-			}
-		}
-		return nextid;
+		maxIdSoFar += 1;
+		return maxIdSoFar;
+	}
+	
+	public void setMaxIdSoFar(int value) {
+		maxIdSoFar = value;
 	}
 	
 	public void setPeers(ArrayList<Peer> peers) {

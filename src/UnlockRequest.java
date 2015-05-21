@@ -9,6 +9,10 @@ public class UnlockRequest implements Serializable {
 	private TimeStamp ts;
 	
 	public UnlockRequest(TimeStamp ts) {
-		
+		this.ts = ts;
+	}
+
+	public TimeStamp getTs() {
+		return ts;
 	}
 }
