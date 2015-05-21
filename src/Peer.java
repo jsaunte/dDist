@@ -46,7 +46,6 @@ public class Peer implements Runnable, Serializable {
 					replayer.getEventHistoryLock().lock();
 					replayer.getEventHistory().add(e);
 					replayer.getEventHistoryLock().unlock();
-//					System.out.println("Før ack sendes");
 					replayer.getDocumentEventCapturer().sendObjectToAllPeers(new Acknowledge(e));
 					replayer.getMapLock().lock();
 					replayer.addAcknowledgement(e.getTimeStamp(), e.getTimeStamp().getID());
@@ -56,14 +55,6 @@ public class Peer implements Runnable, Serializable {
 					replayer.getMapLock().lock();
 					replayer.addAcknowledgement(a.getEvent().getTimeStamp(), id);
 					replayer.getMapLock().unlock();
-//					if (editor.getListen()) {
-//						System.out.println("Acks");
-//						for(TimeStamp t : replayer.getAcknowledgements().keySet()) {
-//							System.out.println(t.getTime());
-//						}
-//						System.out.println("Events");
-//						System.out.println(replayer.getEventHistory().size());
-//					}
 				} else if (o instanceof CaretUpdate) {
 					CaretUpdate cu = (CaretUpdate) o;
 					replayer.updateCaretPos(cu.getID(), cu.getPos());
@@ -76,7 +67,6 @@ public class Peer implements Runnable, Serializable {
 					locked = true;
 				}
 			}
-			replayer.removePeer(this);
 			
 			if(!client.isClosed()) {
 				writeObjectToStream(null);
@@ -85,22 +75,16 @@ public class Peer implements Runnable, Serializable {
 			input.close();
 			client.close();
 		} catch (EOFException e) {
-//			e.printStackTrace();
 		} catch (IOException | ClassNotFoundException e) {
 			if(!editor.getActive()) {
 				editor.disconnect();
 			}
-			editor.setErrorMessage("Connection lost");
-			e.printStackTrace();
 		}
+		replayer.removePeer(this);
 		if(!editor.getActive()) {
 			editor.disconnect();
 			editor.setTitle("Disconnected");
-		} 
-//			else {
-//			editor.setTitleToListen();
-//			editor.setDocumentFilter(null);
-//		}
+		}
 	}
 	
 	public synchronized void writeObjectToStream(Object o) {
@@ -131,5 +115,9 @@ public class Peer implements Runnable, Serializable {
 
 	public int getPort() {
 		return port;
+	}
+
+	public void setLocked(boolean b) {
+		locked = b;
 	}
 }

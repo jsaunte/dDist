@@ -253,7 +253,7 @@ public class DistributedTextEditor extends JFrame {
 					} else if(o instanceof NewPeerDataRequest) {
 						NewPeerDataRequest request = (NewPeerDataRequest) o;
 						
-						Peer newPeer = new Peer(editor, er, request.getId(), client, output, input, lc, client.getLocalAddress().getHostName(), request.getPort());
+						Peer newPeer = new Peer(editor, er, request.getId(), client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
 						dec.addPeer(newPeer);
 						dec.setMaxIdSoFar(request.getId());
 						er.addCaretPos(request.getId(), request.getCaretPos());
@@ -277,6 +277,7 @@ public class DistributedTextEditor extends JFrame {
 				} catch (InterruptedException e) {
 				}
 			}
+			p.setLocked(false);
 		}
 	}
 
@@ -371,7 +372,7 @@ public class DistributedTextEditor extends JFrame {
 				er.setEventHistory(data.getEventHistory());
 				er.setCarets(data.getCarets());
 				
-				er.getCarets().put(lc.getID(), 0);
+				er.addCaretPos(lc.getID(), 0);
 				
 				System.out.println("From data");
 				for(PeerWrapper pw : data.getPeers()) {
