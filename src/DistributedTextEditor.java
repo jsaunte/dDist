@@ -134,11 +134,16 @@ public class DistributedTextEditor extends JFrame {
 		 * The keyReleased event ensures that the caret-position is updated for both peers, when the user moves the caret with the arrow-keys.
 		 */		
 		public void keyReleased(KeyEvent e) {
-			int left = e.VK_LEFT;
+			int left = e.VK_LEFT;	
 			int right = e.VK_RIGHT;
 			int up = e.VK_UP;
 			int down = e.VK_DOWN;
-			if(e.getKeyCode() == left || e.getKeyCode() == right || e.getKeyCode() == up || e.getKeyCode() == down) {
+			int home = e.VK_HOME;
+			int end = e.VK_END;
+			int A = e.VK_A;
+			int kc = e.getKeyCode();
+			
+			if(kc == left || kc == right || kc == up || kc == down || kc == home || kc == end || (kc == A && e.isControlDown() )) {
 				if (dec == null) return;
 				dec.sendObjectToAllPeers(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
 				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
@@ -240,7 +245,7 @@ public class DistributedTextEditor extends JFrame {
 						JoinNetworkRequest request = (JoinNetworkRequest) o;
 						dec.sendObjectToAllPeers(new LockRequest(lc.getTimeStamp()));
 						waitForAllToLock();
-						locked = true;
+						setLocked(true);
 						int id = dec.getNextId();
 						System.out.println(client.getInetAddress().getHostAddress());
 						Peer p = new Peer(editor, er, id, client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());

@@ -67,9 +67,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 			String str, AttributeSet a) throws BadLocationException {
 		lc.increment();
 		TextEvent e = new TextInsertEvent(str, lc.getTimeStamp());
-		eventHistoryLock.lock();
-		eventHistory.add(e);
-		eventHistoryLock.unlock();
+		addEvent(e);
 		sendObjectToAllPeers(e);
 	}
 
@@ -77,9 +75,7 @@ public class DocumentEventCapturer extends DocumentFilter {
 			throws BadLocationException {
 		lc.increment();
 		TextEvent e = new TextRemoveEvent(length, lc.getTimeStamp());
-		eventHistoryLock.lock();
-		eventHistory.add(e);
-		eventHistoryLock.unlock();
+		addEvent(e);
 		sendObjectToAllPeers(e);
 	}
 
@@ -88,16 +84,12 @@ public class DocumentEventCapturer extends DocumentFilter {
 		if (length > 0) {
 			lc.increment();
 			TextEvent e1 = new TextRemoveEvent(length, lc.getTimeStamp());
-			eventHistoryLock.lock();
-			eventHistory.add(e1);
-			eventHistoryLock.unlock();
+			addEvent(e1);
 			sendObjectToAllPeers(e1);
 		}
 		lc.increment();
 		TextEvent e2 = new TextInsertEvent(str, lc.getTimeStamp());
-		eventHistoryLock.lock();
-		eventHistory.add(e2);
-		eventHistoryLock.unlock();
+		addEvent(e2);
 		sendObjectToAllPeers(e2);
 	}
 	
@@ -145,5 +137,11 @@ public class DocumentEventCapturer extends DocumentFilter {
 	
 	public Lock getPeerLock() {
 		return peerLock;
+	}
+	
+	public void addEvent(TextEvent e) {
+		eventHistoryLock.lock();
+		eventHistory.add(e);
+		eventHistoryLock.unlock();
 	}
 }

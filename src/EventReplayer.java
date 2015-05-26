@@ -72,11 +72,11 @@ public class EventReplayer implements Runnable {
 						eventHistoryLock.lock();
 						TextEvent e = eventHistory.take();
 						int idOfSender = e.getTimeStamp().getID();
+						caretLock.lock();
 						int pos = carets.get(idOfSender);
 						e.doEvent(editor, pos);
-
 						updateAllCarets(e, pos);
-
+						caretLock.unlock();
 						eventHistoryLock.unlock();
 
 					} catch (InterruptedException e1) {
@@ -113,8 +113,8 @@ public class EventReplayer implements Runnable {
 		caretLock.unlock();
 	}
 	
-	public void updateAllCarets(TextEvent e, int pos) {
-		caretLock.lock();
+	private void updateAllCarets(TextEvent e, int pos) {
+//		caretLock.lock();
 		if(e instanceof TextInsertEvent) {
 			for(int i : carets.keySet()) {
 				if(carets.get(i) >= pos) {
@@ -128,7 +128,7 @@ public class EventReplayer implements Runnable {
 				}
 			}
 		}
-		caretLock.unlock();
+//		caretLock.unlock();
 	}
 	
 	public PriorityBlockingQueue<TextEvent> getEventHistory() {
