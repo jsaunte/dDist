@@ -53,35 +53,35 @@ public class EventReplayer implements Runnable {
 				TimeStamp match = null;
 				ackLock.lock();
 				boolean isAck = true;
-				if(!acknowledgements.containsKey(head.getTimeStamp()) && !dec.getPeers().isEmpty()) {
-					ackLock.unlock();
-					continue;
-				}
-				Set<Integer> set = acknowledgements.get(head.getTimeStamp());
-				dec.getPeerLock().lock();
-				for(Peer p : dec.getPeers()) {
-					if(!set.contains(p.getId())) {
-						isAck = false;
-						break;
+				if(acknowledgements.containsKey(head.getTimeStamp()) && dec.getPeers().isEmpty()) {
+					Set<Integer> set = acknowledgements.get(head.getTimeStamp());
+					dec.getPeerLock().lock();
+					for(Peer p : dec.getPeers()) {
+						if(!set.contains(p.getId())) {
+							isAck = false;
+							break;
+						}
 					}
-				}
-				dec.getPeerLock().unlock();
-				if(isAck)  {
-					try {
-						match = head.getTimeStamp();
-						eventHistoryLock.lock();
-						TextEvent e = eventHistory.take();
-						int idOfSender = e.getTimeStamp().getID();
-						caretLock.lock();
-						int pos = carets.get(idOfSender);
-						e.doEvent(editor, pos);
-						updateAllCarets(e, pos);
-						caretLock.unlock();
-						eventHistoryLock.unlock();
+					dec.getPeerLock().unlock();
+					if(isAck && head.equals(eventHistory.peek()))  {
+						try {
+							eventHistoryLock.lock();
+							match = head.getTimeStamp();							
+							TextEvent e = eventHistory.take();
+							int idOfSender = e.getTimeStamp().getID();
+							caretLock.lock();
+							int pos = carets.get(idOfSender);
+							e.doEvent(editor, pos);
+							updateAllCarets(e, pos);
+							caretLock.unlock();
+							eventHistoryLock.unlock();
 
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
+						} catch (InterruptedException e1) {
+							e1.printStackTrace();
+						}
+				}
+				ackLock.unlock();
+				
 				}
 				if(match != null) {
 					acknowledgements.remove(match);

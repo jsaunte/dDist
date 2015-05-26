@@ -481,6 +481,7 @@ public class DistributedTextEditor extends JFrame {
 			ert.interrupt();
 			setDocumentFilter(null);
 			connected = false;
+			setLocked(false);
 		}				
 		deregisterOnPort();
 		Disconnect.setEnabled(false);
