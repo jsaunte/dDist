@@ -1,7 +1,5 @@
- // Dragmedmus-delete + home/end. 
+Flere der connecter samtidigt.
 
 Refaktoriser editor-klasssen.
 
 Kig på kode peer.
-
-Caret-updates der sendes rundt. 
