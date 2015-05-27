@@ -53,7 +53,7 @@ public class EventReplayer implements Runnable {
 				TimeStamp match = null;
 				ackLock.lock();
 				boolean isAck = true;
-				if(acknowledgements.containsKey(head.getTimeStamp()) && !dec.getPeers().isEmpty()) {
+				if(acknowledgements.containsKey(head.getTimeStamp()) || dec.getPeers().isEmpty()) {
 					Set<Integer> set = acknowledgements.get(head.getTimeStamp());
 					dec.getPeerLock().lock();
 					for(Peer p : dec.getPeers()) {

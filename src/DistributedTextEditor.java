@@ -255,6 +255,7 @@ public class DistributedTextEditor extends JFrame {
 						dec.sendObjectToAllPeers(new LockRequest(lc.getTimeStamp()));
 						waitForAllToLock();
 						setLocked(true);
+						Thread.sleep(500);
 						int id = dec.getNextId();
 						System.out.println(client.getInetAddress().getHostAddress());
 						Peer p = new Peer(editor, er, id, client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
@@ -275,7 +276,7 @@ public class DistributedTextEditor extends JFrame {
 						Thread t = new Thread(newPeer);
 						t.start();
 					}
-				} catch (IOException | ClassNotFoundException e) {
+				} catch (IOException | ClassNotFoundException | InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
