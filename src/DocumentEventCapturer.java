@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.Socket;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,7 +41,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 	private Lock eventHistoryLock;
 	private Lock peerLock;
 	private DistributedTextEditor editor;
-	private int maxIdSoFar;
 	
 	public DocumentEventCapturer(LamportClock lc, DistributedTextEditor editor) {
 		this.editor = editor;
@@ -48,7 +48,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 		eventHistoryLock = new ReentrantLock();
 		peerLock = new ReentrantLock();
 		peers = new ArrayList<Peer>();
-		maxIdSoFar = 1;
 	}
 
 	/**
@@ -122,15 +121,6 @@ public class DocumentEventCapturer extends DocumentFilter {
 		editor.setTextInArea2(res);
 	}
 
-	public int getNextId() {
-		maxIdSoFar += 1;
-		return maxIdSoFar;
-	}
-	
-	public void setMaxIdSoFar(int value) {
-		maxIdSoFar = value;
-	}
-	
 	public void setPeers(ArrayList<Peer> peers) {
 		this.peers = peers;
 	}
