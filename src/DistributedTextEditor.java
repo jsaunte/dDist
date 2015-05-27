@@ -257,7 +257,6 @@ public class DistributedTextEditor extends JFrame {
 						setLocked(true);
 						Thread.sleep(500);
 						int id = dec.getNextId();
-						System.out.println(client.getInetAddress().getHostAddress());
 						Peer p = new Peer(editor, er, id, client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
 						ConnectionData cd = new ConnectionData(er.getEventHistory(), er.getAcknowledgements(), er.getCarets(), id, area1.getText(), lc.getTimeStamp(), lc.getID(), dec.getPeers(), serverSocket.getLocalPort());
 						p.writeObjectToStream(cd);
@@ -389,11 +388,6 @@ public class DistributedTextEditor extends JFrame {
 				
 				er.addCaretPos(lc.getID(), 0);
 				
-				System.out.println("From data");
-				for(PeerWrapper pw : data.getPeers()) {
-					System.out.println("IP: " + pw.getIP() + "; port: " + pw.getPort() + "; id: " + pw.getId());
-				}
-				
 				for(PeerWrapper p : data.getPeers()) {
 					Socket socket;
 					try {
@@ -413,12 +407,7 @@ public class DistributedTextEditor extends JFrame {
 					}
 				}
 				
-				System.out.println("Our new peers");
-				dec.getPeerLock().lock();
-				for(Peer p : dec.getPeers()) {
-					System.out.println("IP: " + p.getIP() + "; port: " + p.getPort() + "; id: " + p.getId());
-				}
-				dec.getPeerLock().unlock();
+
 				
 				Thread t1 = new Thread(new Runnable() {
 					
