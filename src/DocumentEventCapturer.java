@@ -113,6 +113,9 @@ public class DocumentEventCapturer extends DocumentFilter {
 		peerLock.unlock();
 	}
 	
+	/**
+	 * This method updates the second text area, to display the information about all the peers we are currently connected to.
+	 */
 	public void updateConnectionStatusArea() {
 		String res = "";
 		for(Peer peer : peers) {

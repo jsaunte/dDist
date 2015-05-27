@@ -5,11 +5,14 @@ import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Lock;
 
+/**
+ * 
+ * @author Hjortehandlerne
+ * The ConnectionData contains all the relevant information a new peer needs to join the network, and is used to send all this data to that new peer.
+ */
 
 public class ConnectionData implements Serializable {
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 9010994792178486010L;
 	private PriorityBlockingQueue<TextEvent> eventHistory;
 	private HashMap<TimeStamp, Set<Integer>> acknowledgements;

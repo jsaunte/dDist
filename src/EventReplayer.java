@@ -25,11 +25,7 @@ public class EventReplayer implements Runnable {
 	private boolean wasInterrupted = false;
 	private int maxIdSoFar;
 
-	/*
-	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
-	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
-	 * It calls on method on the editor to update it appropriately. 
-	 */
+	
 	public EventReplayer(DistributedTextEditor editor, DocumentEventCapturer dec, LamportClock lc) {
 		this.dec = dec;
 		this.lc = lc;
@@ -43,7 +39,8 @@ public class EventReplayer implements Runnable {
 	}
 
 	/** 
-	 * When the EventReplayer runs, it empties the eventHistory. Whenever an element is taken out of the queue, it checks that the event has been acknowledged. 
+	 * When the EventReplayer runs, it empties the eventHistory.
+	 *  Whenever an element is taken out of the queue, it checks that the event has been acknowledged by all currently connected peers.
 	 * Then it updates the position of the carets, depending on which event it is.  
 	 */
 	public void run() {
@@ -95,8 +92,8 @@ public class EventReplayer implements Runnable {
 	}
 
 
-	/* 
-	 * Will send null to the other peer if the connection is not closed.
+	/**
+	 * Will send null to the other peers if the connection is not closed.
 	 */
 	public void stopStreamToQueue() {
 		dec.getPeerLock().lock();
@@ -114,7 +111,6 @@ public class EventReplayer implements Runnable {
 	}
 
 	private void updateAllCarets(TextEvent e, int pos) {
-		//		caretLock.lock();
 		if(e instanceof TextInsertEvent) {
 			for(int i : carets.keySet()) {
 				if(carets.get(i) >= pos) {
@@ -128,7 +124,6 @@ public class EventReplayer implements Runnable {
 				}
 			}
 		}
-		//		caretLock.unlock();
 	}
 
 	public PriorityBlockingQueue<TextEvent> getEventHistory() {

@@ -173,12 +173,11 @@ public class DistributedTextEditor extends JFrame {
 	};
 
 
-	/*
+	/**
 	 * This action is called when the Listen-button is fired. 
 	 * It creates a serversocket, and awaits a connection.
-	 * When the connection is made, the textfields are emptied, and the title is changed accordingly. 
-	 * An eventcapturer is created, and the eventreplayer is started with the given eventcapturer. 
-	 * The GUI-menu is updated appropriately.
+	 * When the first connection is made, a ConnectionData object is sent to the other peer, and this editor creates new data for the incomming peer.
+	 * After the first connection is made, waitForConnection is called, which waits for more connections.
 	 */
 	Action Listen = new AbstractAction("Listen") {
 		public void actionPerformed(ActionEvent e) {
@@ -241,6 +240,15 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 	
+	/**
+	 * waitForConnection waits for incomming connections.
+	 * There are two cases. If we receive a JoinNetworkRequest it means that a new peer tries to get into the network.
+	 * We lock the entire system, and sends a ConnectionData object to the new peer, from which he can connect to every other peer.
+	 * We add this new peer to our data.
+	 * 
+	 * If we receive a NewPeerDataRequest, it means that a new peer has received ConnectionData from another peer in the network,
+	 * and he is now trying to connect to everyone, including me. We then update our data with the new peer.
+	 */
 	private void waitForConnection() {
 		while(active) {
 			Socket client = waitForConnectionFromClient();
@@ -266,7 +274,6 @@ public class DistributedTextEditor extends JFrame {
 						er.addCaretPos(id, 0);
 					} else if(o instanceof NewPeerDataRequest) {
 						NewPeerDataRequest request = (NewPeerDataRequest) o;
-						
 						Peer newPeer = new Peer(editor, er, request.getId(), client, output, input, lc, client.getInetAddress().getHostAddress(), request.getPort());
 						dec.addPeer(newPeer);
 						er.addCaretPos(request.getId(), request.getCaretPos());
@@ -275,7 +282,6 @@ public class DistributedTextEditor extends JFrame {
 						t.start();
 					}
 				} catch (IOException | ClassNotFoundException | InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -335,16 +341,16 @@ public class DistributedTextEditor extends JFrame {
 		try {
 			res = serverSocket.accept();	
 		} catch (IOException e) {
-			// We return null on IOExceptions
 		}
 		return res;
 	}
 
-	/*
+	/**
 	 * This action is called when the Connect-button is fired. 
-	 * It empties the textareas, and creates a ClientSocket, on the IP-adress and the Port-number taken from the textinput-areas.
-	 * An eventcapturer is created, and the eventreplayer is started with the given eventcapturer. 
-	 * The GUI-menu is updated appropriately.
+	 * It creates a ClientSocket with the known peer, and opens a serversocket to listen for new peers.
+	 * We send a JoinNetworkRequest to the known peer, and receive ConnectionData from him. We then connect to all other peers in the network,
+	 * and update our data from the received ConnectionData.
+	 * At last we call waitForConnection() to wait for new connections from new peers, and finally we tell everyone to unlock the system
 	 */
 	Action Connect = new AbstractAction("Connect") {
 		public void actionPerformed(ActionEvent e) {
@@ -392,10 +398,7 @@ public class DistributedTextEditor extends JFrame {
 						socket = connectToPeer(p.getIP(), p.getPort());
 						ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
 						ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-						
-						// TODO : Note that caret pos is hardcoded to 0. Might give problem
 						outputStream.writeObject(new NewPeerDataRequest(lc.getID(), serverSocket.getLocalPort(), 0));
-//						NewPeerDataAcknowledgement ack = (NewPeerDataAcknowledgement) input.readObject();
 						Peer newPeer = new Peer(editor, er, p.getId(), socket, outputStream, inputStream, lc, p.getIP(), p.getPort());
 						dec.addPeer(newPeer);
 						Thread t = new Thread(newPeer);
@@ -456,7 +459,7 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 
-	/*
+	/**
 	 * This action is called when the Disconnect-button is fired.
 	 */
 	Action Disconnect = new AbstractAction("Disconnect") {
@@ -465,9 +468,8 @@ public class DistributedTextEditor extends JFrame {
 		}
 	};
 
-	/* 
-	 * The disconnect method will stop the eventreplayer, and send null to the other peer, to stop their reading from the stream.
-	 * If a server calls disconnect, the serversocket will be closed.
+	/**
+	 * The disconnect method will stop the eventreplayer, and send null to the other peers, to stop their reading from their streams.
 	 * The GUI-menu is updated appropriately.
 	 */
 	public void disconnect() {
@@ -565,9 +567,6 @@ public class DistributedTextEditor extends JFrame {
 	}
 
 	public void setTitleToListen() {
-//		InetAddress local;
-//		local = serverSocket.getInetAddress();
-//		setTitle("I'm listening on: " + local.getHostAddress() + ":" + portNumber.getText());
 		try {
 			String serverString = serverSocket.getInetAddress().getLocalHost().toString();
 			String serverIP = serverString.split("/")[1];

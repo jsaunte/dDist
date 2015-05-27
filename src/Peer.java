@@ -5,11 +5,13 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Socket;
 
+/**
+ * @author Hjortehandlerne
+ * The Peer-class is used internally in an Editor, to represent another peer in the network,
+ * and is used for all communication with this peer. 
+ */
 
 public class Peer implements Runnable, Serializable {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -3160849123787642705L;
 	private int id;
 	private DistributedTextEditor editor;
@@ -35,6 +37,11 @@ public class Peer implements Runnable, Serializable {
 		this.input = input;
 	}
 
+	/**
+	 * The run-method, reads all the incomming events from this peer, and acts accordingly to each event. 
+	 * When null is received, it means this peer is trying to disconnect from us, and we close streams and the socket.
+	 */
+	
 	@Override
 	public void run() {
 		try {
@@ -64,7 +71,6 @@ public class Peer implements Runnable, Serializable {
 					locked = true;
 				}
 			}
-			
 			if(!client.isClosed()) {
 				writeObjectToStream(null);
 			}
@@ -84,6 +90,10 @@ public class Peer implements Runnable, Serializable {
 		}
 	}
 	
+	/**
+	 * Writes an object to this peer.
+	 * @param o - the object to be sent.
+	 */
 	public synchronized void writeObjectToStream(Object o) {
 		try {
 			if(!client.isClosed()) {
