@@ -24,7 +24,7 @@ public class EventReplayer implements Runnable {
 	private HashMap<Integer, Integer> carets;
 	private boolean wasInterrupted = false;
 	private int maxIdSoFar;
-	
+
 	/*
 	 * The constructor creates Output- and Input-Streams, and creates a thread which continuously will read TextEvent-objects from the InputStream
 	 * When the InputStream receives null, the thread will write null to the other, and then both peers will close their sockets. 
@@ -41,7 +41,7 @@ public class EventReplayer implements Runnable {
 		caretLock = new ReentrantLock();
 		eventHistoryLock = dec.getEventHistoryLock();
 	}
-	
+
 	/** 
 	 * When the EventReplayer runs, it empties the eventHistory. Whenever an element is taken out of the queue, it checks that the event has been acknowledged. 
 	 * Then it updates the position of the carets, depending on which event it is.  
@@ -64,22 +64,26 @@ public class EventReplayer implements Runnable {
 					}
 					dec.getPeerLock().unlock();
 					if(isAck && head.equals(eventHistory.peek()))  {
+						eventHistoryLock.lock();
+						caretLock.lock();
 						try {
-							eventHistoryLock.lock();
-							match = head.getTimeStamp();							
+							int pos = 0;
 							TextEvent e = eventHistory.take();
-							int idOfSender = e.getTimeStamp().getID();
-							caretLock.lock();
-							int pos = carets.get(idOfSender);
+							match = head.getTimeStamp();
+							if(head instanceof CaretUpdate) {
+								pos = ((CaretUpdate) head).getPos();
+							} else {
+								int idOfSender = e.getTimeStamp().getID();
+								pos = carets.get(idOfSender);
+							}
 							e.doEvent(editor, pos);
 							updateAllCarets(e, pos);
-							caretLock.unlock();
-							eventHistoryLock.unlock();
-
 						} catch (InterruptedException e1) {
 							e1.printStackTrace();
 						}
-				}
+						caretLock.unlock();
+						eventHistoryLock.unlock();
+					}
 				}
 				if(match != null) {
 					acknowledgements.remove(match);
@@ -89,8 +93,8 @@ public class EventReplayer implements Runnable {
 		}
 		System.out.println("I'm the thread running the EventReplayer, now I die!");
 	}
-	
-	
+
+
 	/* 
 	 * Will send null to the other peer if the connection is not closed.
 	 */
@@ -104,13 +108,13 @@ public class EventReplayer implements Runnable {
 		dec.getPeerLock().unlock();
 		wasInterrupted = true;
 	}
-	
+
 	public void updateCaretPos(int id, int pos) {
 		carets.put(id, pos);
 	}
-	
+
 	private void updateAllCarets(TextEvent e, int pos) {
-//		caretLock.lock();
+		//		caretLock.lock();
 		if(e instanceof TextInsertEvent) {
 			for(int i : carets.keySet()) {
 				if(carets.get(i) >= pos) {
@@ -124,9 +128,9 @@ public class EventReplayer implements Runnable {
 				}
 			}
 		}
-//		caretLock.unlock();
+		//		caretLock.unlock();
 	}
-	
+
 	public PriorityBlockingQueue<TextEvent> getEventHistory() {
 		return eventHistory;
 	}
@@ -142,11 +146,11 @@ public class EventReplayer implements Runnable {
 	public LamportClock getLc() {
 		return lc;
 	}
-	
+
 	public DocumentEventCapturer getDocumentEventCapturer() {
 		return dec;
 	}
-	
+
 	public void addAcknowledgement(TimeStamp ts, int id) {
 		ackLock.lock();
 		if(!acknowledgements.containsKey(ts)) {
@@ -195,12 +199,12 @@ public class EventReplayer implements Runnable {
 		dec.getPeers().remove(peer);
 		dec.updateConnectionStatusArea();
 		dec.getPeerLock().unlock();
-	
+
 		caretLock.lock();
 		carets.remove(peer.getId());
 		caretLock.unlock();
 	}
-	
+
 	public Lock getCaretLock() {
 		return caretLock;
 	}
