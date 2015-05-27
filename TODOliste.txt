@@ -1,16 +1,7 @@
-Ctrl+A listener.
-Home+End Listener.
-Dragmedmus-delete.
+ // Dragmedmus-delete + home/end. 
 
 Refaktoriser editor-klasssen.
 
-(Package-struktur)
-
 Kig på kode peer.
 
-samtidige connects.
-
-Oprindelig 'server' fryser ikke ved Lock.
-
-
-Låse carets.
+Caret-updates der sendes rundt. 
