@@ -106,9 +106,7 @@ public class EventReplayer implements Runnable {
 	}
 	
 	public void updateCaretPos(int id, int pos) {
-		caretLock.lock();
 		carets.put(id, pos);
-		caretLock.unlock();
 	}
 	
 	private void updateAllCarets(TextEvent e, int pos) {

@@ -145,8 +145,12 @@ public class DistributedTextEditor extends JFrame {
 			
 			if(kc == left || kc == right || kc == up || kc == down || kc == home || kc == end || (kc == A && e.isControlDown() )) {
 				if (dec == null) return;
-				dec.sendObjectToAllPeers(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
-				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
+				lc.increment();
+				TextEvent cu = new CaretUpdate(area1.getCaretPosition(), lc.getTimeStamp());
+				dec.sendObjectToAllPeers(cu);
+				er.getEventHistoryLock().lock();
+				er.getEventHistory().add(cu);
+				er.getEventHistoryLock().unlock();
 			}
 		}
 	};
@@ -157,8 +161,13 @@ public class DistributedTextEditor extends JFrame {
 	private MouseListener m1 = new MouseAdapter() {
 		public void mouseReleased(MouseEvent e) {
 			if(e.getButton() == e.BUTTON1 && connected) {
-				dec.sendObjectToAllPeers(new CaretUpdate(area1.getCaretPosition(), lc.getID()));
-				er.updateCaretPos(lc.getID(), area1.getCaretPosition());
+				if (dec == null) return;
+				lc.increment();
+				TextEvent cu = new CaretUpdate(area1.getCaretPosition(), lc.getTimeStamp());
+				dec.sendObjectToAllPeers(cu);
+				er.getEventHistoryLock().lock();
+				er.getEventHistory().add(cu);
+				er.getEventHistoryLock().unlock();
 			}
 		}
 	};
@@ -600,5 +609,9 @@ public class DistributedTextEditor extends JFrame {
 
 	public void setTextInArea2(String res) {
 		area2.setText(res);		
+	}
+	
+	public EventReplayer getEventReplayer() {
+		return er;
 	}
 }

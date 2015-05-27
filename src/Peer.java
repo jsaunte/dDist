@@ -55,9 +55,6 @@ public class Peer implements Runnable, Serializable {
 					replayer.getMapLock().lock();
 					replayer.addAcknowledgement(a.getEvent().getTimeStamp(), id);
 					replayer.getMapLock().unlock();
-				} else if (o instanceof CaretUpdate) {
-					CaretUpdate cu = (CaretUpdate) o;
-					replayer.updateCaretPos(cu.getID(), cu.getPos());
 				} else if (o instanceof LockRequest) {
 					editor.setLocked(true);
 					writeObjectToStream(new LockAcknowledge(lc.getTimeStamp()));
