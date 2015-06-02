@@ -1,5 +1,0 @@
-Flere der connecter samtidigt.
-
-Refaktoriser editor-klasssen.
-
-Kig på kode peer.
